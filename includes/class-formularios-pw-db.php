@@ -40,6 +40,16 @@ final class Formularios_PW_DB
     }
 
     /**
+     * table_payloads — Devuelve el nombre completo de la tabla de payloads cifrados en DB.
+     */
+    public static function table_payloads(): string
+    {
+        global $wpdb;
+
+        return $wpdb->prefix . 'codepty_pw_payloads';
+    }
+
+    /**
      * create_tables — Crea o actualiza las tablas necesarias del plugin.
      */
     public static function create_tables(): void
@@ -106,8 +116,21 @@ final class Formularios_PW_DB
             . "KEY created_at (created_at)\n"
             . ') ' . $charset . ';';
 
+        $payloads_sql = 'CREATE TABLE ' . self::table_payloads() . " (\n"
+            . "id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,\n"
+            . "storage_ref VARCHAR(80) NOT NULL,\n"
+            . "object_type VARCHAR(20) NOT NULL,\n"
+            . "object_ref VARCHAR(80) NOT NULL DEFAULT '',\n"
+            . "payload LONGTEXT NOT NULL,\n"
+            . "updated_at DATETIME NOT NULL,\n"
+            . "PRIMARY KEY  (id),\n"
+            . "UNIQUE KEY storage_object (storage_ref, object_type, object_ref),\n"
+            . "KEY updated_at (updated_at)\n"
+            . ') ' . $charset . ';';
+
         dbDelta($cases_sql);
         dbDelta($tokens_sql);
         dbDelta($audit_sql);
+        dbDelta($payloads_sql);
     }
 }

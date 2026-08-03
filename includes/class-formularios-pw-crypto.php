@@ -80,7 +80,7 @@ final class Formularios_PW_Crypto
         $raw = self::read_master_key_source();
 
         if ($raw === '') {
-            throw new RuntimeException('Falta clave maestra: define CODEPTY_PW_MASTER_KEY o CODEPTY_PW_MASTER_KEY_FILE fuera de WordPress.');
+            $raw = self::maybe_create_wordpress_managed_key();
         }
 
         $binary = self::decode_key($raw);
@@ -124,7 +124,45 @@ final class Formularios_PW_Crypto
             return trim((string) file_get_contents($file_candidate));
         }
 
-        return trim($inline_candidate);
+        if ($inline_candidate !== '') {
+            return trim($inline_candidate);
+        }
+
+        $option_key = get_option(self::wordpress_option_name(), '');
+        if (is_string($option_key) && trim($option_key) !== '') {
+            return trim($option_key);
+        }
+
+        return '';
+    }
+
+    /**
+     * maybe_create_wordpress_managed_key — Crea una clave interna en opciones de WordPress si no existe otra fuente.
+     */
+    private static function maybe_create_wordpress_managed_key(): string
+    {
+        $existing = get_option(self::wordpress_option_name(), '');
+        if (is_string($existing) && trim($existing) !== '') {
+            return trim($existing);
+        }
+
+        $generated = base64_encode(random_bytes(self::KEY_BYTES));
+
+        if (get_option(self::wordpress_option_name(), null) === null) {
+            add_option(self::wordpress_option_name(), $generated, '', false);
+        } else {
+            update_option(self::wordpress_option_name(), $generated, false);
+        }
+
+        return $generated;
+    }
+
+    /**
+     * wordpress_option_name — Devuelve el nombre de opción usada para la clave interna gestionada por WordPress.
+     */
+    private static function wordpress_option_name(): string
+    {
+        return 'formularios_pw_master_key';
     }
 
     /**

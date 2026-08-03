@@ -74,7 +74,7 @@ final class Formularios_PW_Retention
         }
 
         foreach ($rows as $row) {
-            self::delete_case_files((string) $row['storage_ref']);
+            Formularios_PW_Storage::delete_case_artifacts((string) $row['storage_ref']);
 
             $wpdb->update(
                 $table,
@@ -93,24 +93,6 @@ final class Formularios_PW_Retention
      */
     private static function delete_case_files(string $storage_ref): void
     {
-        $base = Formularios_PW_Storage::storage_dir();
-        $prefix = substr($storage_ref, 0, 2);
-
-        $case_file = $base . '/cases/' . $prefix . '/' . $storage_ref . '.pty';
-        if (is_file($case_file)) {
-            @unlink($case_file);
-        }
-
-        $attachment_dir = $base . '/attachments/' . $prefix . '/' . $storage_ref;
-        if (is_dir($attachment_dir)) {
-            $files = glob($attachment_dir . '/*.pty');
-            if (is_array($files)) {
-                foreach ($files as $file) {
-                    @unlink($file);
-                }
-            }
-
-            @rmdir($attachment_dir);
-        }
+        Formularios_PW_Storage::delete_case_artifacts($storage_ref);
     }
 }
