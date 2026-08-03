@@ -1,0 +1,46 @@
+.formularios-pw .fpw-card {
+    background: #ffffff;
+    border: 1px solid #d8e0ea;
+    border-radius: 10px;
+    margin: 16px 0;
+    padding: 16px;
+}
+
+.formularios-pw .fpw-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+.formularios-pw .fpw-status {
+    display: inline-block;
+    border-radius: 999px;
+    padding: 4px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    border: 1px solid #b8c6d8;
+    background: #f3f6fa;
+}
+
+.formularios-pw .fpw-status-enviado,
+.formularios-pw .fpw-status-entrevista {
+    background: #fff8e7;
+    border-color: #f0cc78;
+}
+
+.formularios-pw .fpw-status-recibido,
+.formularios-pw .fpw-status-completo {
+    background: #ebf9ee;
+    border-color: #7ec591;
+}
+
+.formularios-pw .fpw-status-cerrado {
+    background: #eceff3;
+    border-color: #bcc6d2;
+}
+
+@media (max-width: 782px) {
+    .formularios-pw .fpw-grid {
+        grid-template-columns: 1fr;
+    }
+}
