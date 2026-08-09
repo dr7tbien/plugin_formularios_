@@ -69,22 +69,27 @@ final class Formularios_PW_Retention
             ARRAY_A
         );
 
-        if (!is_array($rows) || empty($rows)) {
-            return;
+        if (is_array($rows)) {
+            foreach ($rows as $row) {
+                Formularios_PW_Storage::delete_case_artifacts((string) $row['storage_ref']);
+
+                $wpdb->update(
+                    $table,
+                    array('deleted_at' => current_time('mysql', true)),
+                    array('case_uid' => (string) $row['case_uid']),
+                    array('%s'),
+                    array('%s')
+                );
+
+                Formularios_PW_Audit::log((string) $row['case_uid'], 'retention_mark_deleted', array('threshold' => $threshold));
+            }
         }
 
-        foreach ($rows as $row) {
-            Formularios_PW_Storage::delete_case_artifacts((string) $row['storage_ref']);
-
-            $wpdb->update(
-                $table,
-                array('deleted_at' => current_time('mysql', true)),
-                array('case_uid' => (string) $row['case_uid']),
-                array('%s'),
-                array('%s')
+        $contact_days = (int) apply_filters('formularios_pw_contact_retention_days', $days);
+        if ($contact_days > 0) {
+            Formularios_PW_Contact_Repository::purge_before(
+                gmdate('Y-m-d H:i:s', time() - ($contact_days * DAY_IN_SECONDS))
             );
-
-            Formularios_PW_Audit::log((string) $row['case_uid'], 'retention_mark_deleted', array('threshold' => $threshold));
         }
     }
 

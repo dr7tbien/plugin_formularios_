@@ -1,0 +1,270 @@
+.codepty-contact {
+    --codepty-form-body: var(--font-body, 1.2rem);
+    --codepty-form-action: var(--font-action, 1.5rem);
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 760px;
+    padding: 18px;
+    border: 1px solid #e3e8ef;
+    border-radius: 20px;
+    background: #fff;
+    color: #17233c;
+    box-shadow: 0 14px 40px rgba(23, 35, 60, 0.08);
+    display: flex;
+    flex-direction: column;
+}
+
+.codepty-contact *,
+.codepty-contact *::before,
+.codepty-contact *::after {
+    box-sizing: border-box;
+}
+
+.codepty-contact__whatsapp {
+    margin-bottom: 14px;
+    padding: 16px;
+    display: flex;
+    gap: 14px;
+    align-items: center;
+    border: 1px solid rgba(17, 184, 90, 0.28);
+    border-radius: 20px;
+    background: linear-gradient(135deg, #eafff2 0%, #fff 100%);
+}
+
+.codepty-contact__whatsapp-icon {
+    width: 34px;
+    height: 34px;
+    flex: 0 0 34px;
+    display: block;
+    color: #25d366;
+}
+
+.codepty-contact__whatsapp-icon svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.codepty-contact__whatsapp-number {
+    color: #1261a6;
+    font-size: clamp(1.45rem, 5vw, 1.75rem);
+    font-weight: 900;
+    line-height: 1.2;
+    text-decoration: none;
+}
+
+.codepty-contact__whatsapp-number:hover,
+.codepty-contact__whatsapp-number:focus-visible {
+    color: #0b477d;
+    text-decoration: underline;
+}
+
+.codepty-contact__title {
+    margin: 0 0 12px;
+    color: #0057b8;
+    font-size: var(--codepty-form-action);
+    line-height: 1.3;
+}
+
+.codepty-contact__field {
+    margin-bottom: 10px;
+}
+
+.codepty-contact__field label {
+    display: block;
+    margin-bottom: 7px;
+    color: #263650;
+    font-weight: 700;
+}
+
+.codepty-contact__field input,
+.codepty-contact__field textarea {
+    display: block;
+    width: 100%;
+    min-height: 48px;
+    padding: 13px 16px;
+    border: 1px solid #d5dfec;
+    border-radius: 14px;
+    background: #fbfdff;
+    color: #17233c;
+    font: inherit;
+    font-size: var(--codepty-form-body);
+}
+
+.codepty-contact__field textarea {
+    min-height: 150px;
+    resize: vertical;
+}
+
+.codepty-contact__form {
+    min-height: 0;
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+}
+
+.codepty-contact__field--message {
+    min-height: 150px;
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+}
+
+.codepty-contact__field--message textarea {
+    height: 100%;
+    flex: 1;
+}
+
+.codepty-contact__field input:focus,
+.codepty-contact__field textarea:focus {
+    border-color: #1261a6;
+    outline: 3px solid rgba(18, 97, 166, 0.16);
+}
+
+.codepty-contact__privacy {
+    margin: 4px 0 14px;
+    color: #5a6678;
+    font-size: var(--codepty-form-body);
+    line-height: 1.5;
+}
+
+.codepty-contact__submit {
+    width: 100%;
+    min-height: 54px;
+    padding: 13px 20px;
+    border: 0;
+    border-radius: 12px;
+    background: #d71920;
+    color: #fff;
+    font: inherit;
+    font-size: var(--codepty-form-action);
+    font-weight: 800;
+    cursor: pointer;
+    box-shadow: 0 12px 26px rgba(215, 25, 32, 0.24);
+    margin-top: auto;
+}
+
+.codepty-contact__submit:hover,
+.codepty-contact__submit:focus-visible {
+    background: #b92027;
+}
+
+.codepty-contact__submit:disabled {
+    cursor: wait;
+    opacity: 0.7;
+}
+
+.codepty-contact__notice {
+    margin: 0 0 20px;
+    padding: 14px 16px;
+    border-radius: 12px;
+}
+
+.codepty-contact__notice p,
+.codepty-contact__notice ul {
+    margin-top: 0;
+}
+
+.codepty-contact__notice--success {
+    border: 1px solid #5eb97c;
+    background: #eefaf2;
+    color: #225d35;
+}
+
+.codepty-contact__notice--error {
+    border: 1px solid #df7777;
+    background: #fff3f3;
+    color: #7d2020;
+}
+
+.codepty-contact__trap {
+    position: absolute !important;
+    left: -10000px !important;
+    width: 1px !important;
+    height: 1px !important;
+    overflow: hidden !important;
+}
+
+.codepty-contact__sr-only {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+}
+
+/* Evita una tarjeta anidada cuando el shortcode ocupa la tarjeta de la portada. */
+.contact > .codepty-contact {
+    max-width: none;
+    min-height: 100%;
+    padding: 4px;
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+}
+
+.contact > .codepty-contact .codepty-contact__whatsapp {
+    min-height: 66px;
+}
+
+.contact > .codepty-contact .codepty-contact__title {
+    margin-top: 2px;
+}
+
+.contact > .codepty-contact .codepty-contact__form {
+    min-height: 0;
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+}
+
+.contact > .codepty-contact .codepty-contact__field--message {
+    min-height: 150px;
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+}
+
+.contact > .codepty-contact .codepty-contact__field textarea {
+    min-height: 150px;
+    flex: 1;
+}
+
+.contact > .codepty-contact .codepty-contact__submit {
+    margin-top: auto;
+}
+
+.codepty-contact__progress {
+    min-height: 0;
+    margin: 0;
+    text-align: center;
+}
+
+.codepty-contact__progress:not(:empty) {
+    min-height: 1.3em;
+    margin-top: 8px;
+}
+
+@media (min-width: 768px) {
+    .contact > .codepty-contact {
+        padding: 0;
+    }
+}
+
+@media (max-width: 600px) {
+    .codepty-contact {
+        padding: 16px;
+        border-radius: 16px;
+    }
+
+    .contact > .codepty-contact {
+        padding: 4px;
+    }
+}

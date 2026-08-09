@@ -10,6 +10,11 @@ if (!defined('ABSPATH')) {
 final class Formularios_PW_DB
 {
     /**
+     * SCHEMA_TABLES — Lista las tablas que el plugin necesita para funcionar.
+     */
+    private const SCHEMA_TABLES = array('cases', 'tokens', 'audit', 'payloads', 'contacts');
+
+    /**
      * table_cases — Devuelve el nombre completo de la tabla de expedientes.
      */
     public static function table_cases(): string
@@ -47,6 +52,13 @@ final class Formularios_PW_DB
         global $wpdb;
 
         return $wpdb->prefix . 'codepty_pw_payloads';
+    }
+
+    public static function table_contacts(): string
+    {
+        global $wpdb;
+
+        return $wpdb->prefix . 'codepty_pw_contacts';
     }
 
     /**
@@ -128,9 +140,76 @@ final class Formularios_PW_DB
             . "KEY updated_at (updated_at)\n"
             . ') ' . $charset . ';';
 
+        $contacts_sql = 'CREATE TABLE ' . self::table_contacts() . " (\n"
+            . "id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,\n"
+            . "contact_uid VARCHAR(40) NOT NULL,\n"
+            . "storage_ref VARCHAR(80) NOT NULL,\n"
+            . "delivery_channel VARCHAR(20) NOT NULL,\n"
+            . "delivery_status VARCHAR(20) NOT NULL DEFAULT 'stored',\n"
+            . "origin_post_id BIGINT UNSIGNED NULL,\n"
+            . "created_at DATETIME NOT NULL,\n"
+            . "PRIMARY KEY  (id),\n"
+            . "UNIQUE KEY contact_uid (contact_uid),\n"
+            . "UNIQUE KEY storage_ref (storage_ref),\n"
+            . "KEY created_at (created_at),\n"
+            . "KEY delivery_status (delivery_status)\n"
+            . ') ' . $charset . ';';
+
         dbDelta($cases_sql);
         dbDelta($tokens_sql);
         dbDelta($audit_sql);
         dbDelta($payloads_sql);
+        dbDelta($contacts_sql);
+    }
+
+    /**
+     * ensure_tables — Comprueba el esquema del plugin y lo crea si falta alguna tabla.
+     */
+    public static function ensure_tables(): void
+    {
+        if (self::schema_is_complete()) {
+            return;
+        }
+
+        self::create_tables();
+    }
+
+    /**
+     * schema_is_complete — Verifica si todas las tablas del plugin ya existen.
+     */
+    public static function schema_is_complete(): bool
+    {
+        foreach (self::SCHEMA_TABLES as $table_name) {
+            if (!self::table_exists($table_name)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * table_exists — Comprueba si existe una tabla concreta del plugin.
+     */
+    public static function table_exists(string $table_name): bool
+    {
+        global $wpdb;
+
+        $map = array(
+            'cases' => self::table_cases(),
+            'tokens' => self::table_tokens(),
+            'audit' => self::table_audit(),
+            'payloads' => self::table_payloads(),
+            'contacts' => self::table_contacts(),
+        );
+
+        if (!isset($map[$table_name])) {
+            return false;
+        }
+
+        $table = $map[$table_name];
+        $found = $wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $table));
+
+        return is_string($found) && $found === $table;
     }
 }

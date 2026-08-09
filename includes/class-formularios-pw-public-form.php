@@ -15,6 +15,11 @@ final class Formularios_PW_Public_Form
     private const QUERY_VAR = 'codepty_pw_token';
 
     /**
+     * LOG_PREFIX — Etiqueta común para aislar las trazas del formulario público.
+     */
+    private const LOG_PREFIX = '[formularios_pw_public] ';
+
+    /**
      * register — Registra rewrite, query var y resolución de la vista pública.
      */
     public function register(): void
@@ -52,59 +57,90 @@ final class Formularios_PW_Public_Form
             return;
         }
 
+        $this->log('maybe_render start token_len=' . strlen($token_plain) . ' method=' . (isset($_SERVER['REQUEST_METHOD']) ? (string) $_SERVER['REQUEST_METHOD'] : 'unknown'));
+
         nocache_headers();
 
         $binding = Formularios_PW_Repository::find_case_by_token_plain($token_plain);
         if (!$binding) {
+            $this->log('token invalid or revoked');
             $this->render_error_page(403, 'Enlace no válido, caducado o revocado.');
             exit;
         }
 
-        $fingerprint = Formularios_PW_Rate_Limit::fingerprint_from_request((string) $binding['token_hash']);
+        $binding_case_uid = isset($binding['case_uid']) ? (string) $binding['case_uid'] : '';
+        $binding_token_id = isset($binding['id']) ? (int) $binding['id'] : 0;
+        $binding_token_hash = isset($binding['token_hash']) ? (string) $binding['token_hash'] : '';
+        $this->log('binding resolved case_uid=' . $binding_case_uid . ' token_id=' . $binding_token_id . ' token_hash_prefix=' . substr($binding_token_hash, 0, 10));
+
+        $fingerprint = Formularios_PW_Rate_Limit::fingerprint_from_request($binding_token_hash);
         if (!Formularios_PW_Rate_Limit::allow('view|' . $fingerprint, 100, 15 * MINUTE_IN_SECONDS)) {
+            $this->log('rate limit hit on view fingerprint=' . substr($fingerprint, 0, 12));
             $this->render_error_page(429, 'Has superado el límite temporal de solicitudes.');
             exit;
         }
 
-        $case = Formularios_PW_Repository::get_case_by_uid((string) $binding['case_uid']);
+        $case = Formularios_PW_Repository::get_case_by_uid($binding_case_uid);
         if (!$case) {
+            $this->log('case not found for case_uid=' . $binding_case_uid);
             $this->render_error_page(404, 'No se encontró el expediente solicitado.');
             exit;
         }
 
+        $this->log('case loaded storage_ref=' . (string) $case['storage_ref'] . ' status=' . (string) $case['status']);
+
         $payload = Formularios_PW_Repository::get_case_payload($case);
+        $this->log('payload loaded keys external=' . $this->count_keys($payload['external_form'] ?? null) . ' internal=' . $this->count_keys($payload['internal_form'] ?? null) . ' attachments=' . $this->count_keys($payload['attachments_meta'] ?? null));
+
         $errors = array();
         $success = false;
 
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'POST') {
+            $this->log('incoming POST fields=' . $this->count_post_fields() . ' files=' . $this->count_files() . ' honeypot=' . (isset($_POST['website_url']) ? 'set' : 'missing'));
+
             if (!$this->passes_honeypot()) {
+                $this->log('honeypot triggered');
                 $this->render_error_page(400, 'No se pudo validar el envío.');
                 exit;
             }
 
             if (!Formularios_PW_Rate_Limit::allow('submit|' . $fingerprint, 25, 15 * MINUTE_IN_SECONDS)) {
+                $this->log('rate limit hit on submit fingerprint=' . substr($fingerprint, 0, 12));
                 $this->render_error_page(429, 'Demasiados intentos de envío. Prueba de nuevo más tarde.');
                 exit;
             }
 
             try {
+                $payload_before = $payload;
                 $payload = $this->merge_external_form_payload($payload, $case);
+                $this->log('payload merged external_form keys=' . $this->count_keys($payload['external_form'] ?? null) . ' attachments=' . $this->count_keys($payload['attachments_meta'] ?? null));
+
                 Formularios_PW_Repository::save_case_payload($case, $payload);
-                Formularios_PW_Repository::mark_token_used((int) $binding['id']);
+                $this->log('payload saved for case_uid=' . $binding_case_uid . ' storage_ref=' . (string) $case['storage_ref']);
+
+                Formularios_PW_Repository::mark_token_used($binding_token_id);
 
                 if (in_array((string) $case['status'], array('pendiente', 'enviado'), true)) {
-                    Formularios_PW_Repository::update_status((string) $case['case_uid'], 'recibido');
+                    Formularios_PW_Repository::update_status($binding_case_uid, 'recibido');
+                    $this->log('status updated to recibido for case_uid=' . $binding_case_uid);
                 }
 
                 Formularios_PW_Audit::log(
-                    (string) $case['case_uid'],
+                    $binding_case_uid,
                     'external_submitted',
-                    array('token_id' => (int) $binding['id']),
+                    array('token_id' => $binding_token_id),
                     'client',
                     null
                 );
+
+                $this->log('audit logged token_id=' . $binding_token_id);
                 $success = true;
+
+                if ($payload_before === $payload) {
+                    $this->log('warning payload_before_equals_payload true');
+                }
             } catch (Throwable $e) {
+                $this->log('exception during POST save: ' . $e->getMessage());
                 $errors[] = $e->getMessage();
             }
         }
@@ -131,11 +167,15 @@ final class Formularios_PW_Public_Form
             'updated_at' => gmdate('c'),
         );
 
+        $this->log('merge_external_form_payload case_uid=' . (string) $case['case_uid'] . ' storage_ref=' . (string) $case['storage_ref'] . ' external_business_name_len=' . strlen((string) $external['business_name']));
+
         if (!is_array($payload['attachments_meta'] ?? null)) {
             $payload['attachments_meta'] = array();
         }
 
         $new_attachments = $this->process_uploaded_files((string) $case['storage_ref']);
+        $this->log('process_uploaded_files returned=' . count($new_attachments));
+
         if (!empty($new_attachments)) {
             $payload['attachments_meta'] = array_merge($payload['attachments_meta'], $new_attachments);
         }
@@ -155,16 +195,21 @@ final class Formularios_PW_Public_Form
     private function process_uploaded_files(string $storage_ref): array
     {
         if (empty($_FILES['materials']) || !is_array($_FILES['materials'])) {
+            $this->log('no materials files present for storage_ref=' . $storage_ref);
+
             return array();
         }
 
         $files = $_FILES['materials'];
         if (!isset($files['name']) || !is_array($files['name'])) {
+            $this->log('materials field present but malformed for storage_ref=' . $storage_ref);
+
             return array();
         }
 
         $stored = array();
         $count = count($files['name']);
+        $this->log('materials files count=' . $count . ' storage_ref=' . $storage_ref);
 
         for ($i = 0; $i < $count; $i++) {
             $entry = array(
@@ -174,6 +219,8 @@ final class Formularios_PW_Public_Form
                 'error' => $files['error'][$i] ?? UPLOAD_ERR_NO_FILE,
                 'size' => $files['size'][$i] ?? 0,
             );
+
+            $this->log('materials entry index=' . $i . ' name=' . (string) $entry['name'] . ' error=' . (int) $entry['error'] . ' size=' . (int) $entry['size']);
 
             if ((int) $entry['error'] === UPLOAD_ERR_NO_FILE) {
                 continue;
@@ -226,6 +273,8 @@ final class Formularios_PW_Public_Form
 
         $external = is_array($payload['external_form'] ?? null) ? $payload['external_form'] : array();
 
+        $this->log('render_form_page case_uid=' . (string) $case['case_uid'] . ' storage_ref=' . (string) $case['storage_ref'] . ' external_keys=' . $this->count_keys($external) . ' success=' . ($success ? 'yes' : 'no') . ' errors=' . count($errors));
+
         echo '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">';
         echo '<title>Formulario Presencia Web</title>';
         echo '<style>';
@@ -271,5 +320,45 @@ final class Formularios_PW_Public_Form
 
         echo '<button type="submit">Guardar formulario</button>';
         echo '</form></main></body></html>';
+    }
+
+    /**
+     * count_post_fields — Cuenta los valores recibidos por POST para depuración.
+     */
+    private function count_post_fields(): int
+    {
+        return is_array($_POST) ? count($_POST) : 0;
+    }
+
+    /**
+     * count_files — Cuenta los bloques de subida recibidos por FILES para depuración.
+     */
+    private function count_files(): int
+    {
+        return is_array($_FILES) ? count($_FILES) : 0;
+    }
+
+    /**
+     * count_keys — Cuenta claves visibles de arrays y objetos para depuración.
+     */
+    private function count_keys($value): int
+    {
+        if (is_array($value)) {
+            return count($value);
+        }
+
+        if (is_object($value)) {
+            return count(get_object_vars($value));
+        }
+
+        return 0;
+    }
+
+    /**
+     * log — Envía una traza al error_log con prefijo estable del plugin.
+     */
+    private function log(string $message): void
+    {
+        error_log(self::LOG_PREFIX . $message);
     }
 }

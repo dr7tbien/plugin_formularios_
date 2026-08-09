@@ -7,6 +7,22 @@ Plugin independiente para gestionar expedientes de clientes de Presencia Web con
 - formulario interno de entrevista (11 apartados)
 - almacenamiento cifrado por expediente en archivos `.pty`
 - índice mínimo en base de datos y auditoría de acciones relevantes
+- formulario reutilizable de consultas generales mediante `[codepty_formulario_contacto]`
+
+## Formulario de contacto general
+
+El shortcode `[codepty_formulario_contacto]` guarda cada consulta cifrada. En móviles abre
+WhatsApp con el mensaje preparado y en otros dispositivos envía un correo. Las consultas
+pueden revisarse en **Presencia Web > Consultas generales** por usuarios con la capacidad
+`manage_codepty_presencia`.
+
+Los destinos provisionales se definen globalmente y pueden reemplazarse en `wp-config.php`
+antes de cargar el plugin:
+
+```php
+define('CODEPTY_CONTACT_WHATSAPP', '+507 6123-4567');
+define('CODEPTY_CONTACT_EMAIL', 'consultas@example.com');
+```
 
 ## Requisitos de despliegue seguro
 
@@ -32,6 +48,10 @@ La purga automática está desactivada por defecto. Para habilitarla:
 add_filter('formularios_pw_retention_enabled', '__return_true');
 add_filter('formularios_pw_retention_days', fn() => 365);
 ```
+
+Las consultas generales usan el mismo plazo, modificable con el filtro
+`formularios_pw_contact_retention_days`. La purga permanece desactivada mientras no se
+habilite explícitamente la retención general.
 
 ## Comando dr-readme
 

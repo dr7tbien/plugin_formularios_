@@ -93,6 +93,8 @@ final class Formularios_PW_Storage
      */
     public static function read_case_payload(string $storage_ref): array
     {
+        Formularios_PW_DB::ensure_tables();
+
         if (self::use_db_backend()) {
             return self::read_case_payload_db($storage_ref);
         }
@@ -121,6 +123,8 @@ final class Formularios_PW_Storage
      */
     public static function write_case_payload(string $storage_ref, array $payload): void
     {
+        Formularios_PW_DB::ensure_tables();
+
         if (self::use_db_backend()) {
             self::write_case_payload_db($storage_ref, $payload);
 
@@ -161,11 +165,57 @@ final class Formularios_PW_Storage
         @chmod($path, 0600);
     }
 
+    /** Guarda una consulta de contacto cifrada en el almacén privado compartido. */
+    public static function write_contact_payload(string $storage_ref, array $payload): void
+    {
+        Formularios_PW_DB::ensure_tables();
+        $envelope = Formularios_PW_Crypto::encrypt_json($payload);
+        $encoded = wp_json_encode($envelope, JSON_UNESCAPED_SLASHES);
+
+        if (!is_string($encoded)) {
+            throw new RuntimeException('No se pudo cifrar la consulta.');
+        }
+
+        self::upsert_payload($storage_ref, 'contact', '', $encoded);
+    }
+
+    /** Recupera y descifra una consulta de contacto. */
+    public static function read_contact_payload(string $storage_ref): array
+    {
+        Formularios_PW_DB::ensure_tables();
+        $row = self::get_payload_row($storage_ref, 'contact', '');
+        if (!$row) {
+            return array();
+        }
+
+        $envelope = json_decode((string) $row['payload'], true);
+        if (!is_array($envelope)) {
+            throw new RuntimeException('La consulta almacenada tiene un formato inválido.');
+        }
+
+        return Formularios_PW_Crypto::decrypt_json($envelope);
+    }
+
+    /** Elimina definitivamente el payload cifrado de una consulta purgada. */
+    public static function delete_contact_payload(string $storage_ref): void
+    {
+        global $wpdb;
+
+        Formularios_PW_DB::ensure_tables();
+        $wpdb->delete(
+            Formularios_PW_DB::table_payloads(),
+            array('storage_ref' => $storage_ref, 'object_type' => 'contact', 'object_ref' => ''),
+            array('%s', '%s', '%s')
+        );
+    }
+
     /**
      * store_uploaded_file — Valida y cifra un archivo cargado, devolviendo su metadato seguro.
      */
     public static function store_uploaded_file(string $storage_ref, array $uploaded): array
     {
+        Formularios_PW_DB::ensure_tables();
+
         if (!self::use_db_backend()) {
             self::ensure_storage_ready();
         }
@@ -303,6 +353,8 @@ final class Formularios_PW_Storage
      */
     public static function delete_case_artifacts(string $storage_ref): void
     {
+        Formularios_PW_DB::ensure_tables();
+
         if (self::use_db_backend()) {
             global $wpdb;
 

@@ -14,7 +14,7 @@ final class Formularios_PW_Activator
      */
     public static function activate(): void
     {
-        Formularios_PW_DB::create_tables();
+        Formularios_PW_DB::ensure_tables();
         Formularios_PW_Permissions::grant_capability();
         Formularios_PW_Public_Form::register_rewrite_rules();
         Formularios_PW_Retention::schedule();

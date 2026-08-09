@@ -42,9 +42,11 @@ final class Formularios_PW_Plugin
     {
         Formularios_PW_Retention::register();
         (new Formularios_PW_Public_Form())->register();
+        (new Formularios_PW_Contact_Form())->register();
 
         if (is_admin()) {
             (new Formularios_PW_Admin())->register();
+            (new Formularios_PW_Contact_Admin())->register();
         }
     }
 }
