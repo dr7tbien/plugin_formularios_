@@ -4,9 +4,20 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-/** Persistencia cifrada e índice mínimo de consultas generales. */
+/**
+ * Formularios_PW_Contact_Repository — Persiste consultas cifradas y su índice operativo mínimo.
+ */
 final class Formularios_PW_Contact_Repository
 {
+    /**
+     * create — Cifra una consulta, crea su índice y registra el evento de recepción.
+     *
+     * @param array    $payload Datos sanitizados de la consulta y su origen.
+     * @param string   $channel Canal de entrega utilizado por el formulario.
+     * @param int|null $origin_post_id Entrada de WordPress que originó la consulta.
+     * @return array Identificadores `contact_uid` y `storage_ref` recién creados.
+     * @throws RuntimeException Cuando la fila de índice no puede insertarse.
+     */
     public static function create(array $payload, string $channel, ?int $origin_post_id): array
     {
         global $wpdb;
@@ -44,6 +55,13 @@ final class Formularios_PW_Contact_Repository
         return array('contact_uid' => $contact_uid, 'storage_ref' => $storage_ref);
     }
 
+    /**
+     * set_delivery_status — Actualiza el resultado de entrega y lo deja en auditoría.
+     *
+     * @param string $contact_uid Identificador de la consulta.
+     * @param string $status Estado normalizado de la entrega.
+     * @return void
+     */
     public static function set_delivery_status(string $contact_uid, string $status): void
     {
         global $wpdb;
@@ -59,6 +77,12 @@ final class Formularios_PW_Contact_Repository
         Formularios_PW_Audit::log($contact_uid, 'contact_delivery', array('status' => $status), 'system');
     }
 
+    /**
+     * list_recent — Devuelve consultas recientes sin descifrar su contenido.
+     *
+     * @param int $limit Máximo solicitado, limitado internamente entre 1 y 200.
+     * @return array Filas del índice ordenadas de más nueva a más antigua.
+     */
     public static function list_recent(int $limit = 100): array
     {
         global $wpdb;
@@ -76,6 +100,12 @@ final class Formularios_PW_Contact_Repository
         return is_array($rows) ? $rows : array();
     }
 
+    /**
+     * get — Recupera la fila de índice de una consulta concreta.
+     *
+     * @param string $contact_uid Identificador de la consulta.
+     * @return array|null Fila encontrada o `null`.
+     */
     public static function get(string $contact_uid): ?array
     {
         global $wpdb;
@@ -92,6 +122,12 @@ final class Formularios_PW_Contact_Repository
         return is_array($row) ? $row : null;
     }
 
+    /**
+     * purge_before — Elimina consultas, payloads cifrados y auditoría anteriores al umbral.
+     *
+     * @param string $threshold Fecha UTC en formato compatible con MySQL.
+     * @return void
+     */
     public static function purge_before(string $threshold): void
     {
         global $wpdb;

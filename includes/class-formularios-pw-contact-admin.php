@@ -4,17 +4,29 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-/** Vista privada de las consultas recibidas. */
+/**
+ * Formularios_PW_Contact_Admin — Presenta consultas cifradas al equipo autorizado.
+ */
 final class Formularios_PW_Contact_Admin
 {
     private const PAGE_SLUG = 'formularios-pw-contactos';
 
+    /**
+     * register — Registra menú y recursos de la pantalla privada de consultas.
+     *
+     * @return void
+     */
     public function register(): void
     {
         add_action('admin_menu', array($this, 'register_menu'));
         add_action('admin_enqueue_scripts', array($this, 'enqueue_assets'));
     }
 
+    /**
+     * register_menu — Añade Consultas generales como subpágina de Presencia Web.
+     *
+     * @return void
+     */
     public function register_menu(): void
     {
         add_submenu_page(
@@ -27,6 +39,12 @@ final class Formularios_PW_Contact_Admin
         );
     }
 
+    /**
+     * enqueue_assets — Carga estilos solo dentro de la pantalla de consultas.
+     *
+     * @param string $hook Identificador de la pantalla administrativa actual.
+     * @return void
+     */
     public function enqueue_assets(string $hook): void
     {
         if (strpos($hook, self::PAGE_SLUG) === false) {
@@ -36,6 +54,11 @@ final class Formularios_PW_Contact_Admin
         wp_enqueue_style('formularios-pw-admin', FORMULARIOS_PW_URL . 'assets/css/admin.css', array(), FORMULARIOS_PW_VERSION);
     }
 
+    /**
+     * render — Comprueba permisos y muestra listado o detalle de una consulta.
+     *
+     * @return void
+     */
     public function render(): void
     {
         if (!Formularios_PW_Permissions::current_user_can_manage()) {
@@ -55,6 +78,11 @@ final class Formularios_PW_Contact_Admin
         echo '</div>';
     }
 
+    /**
+     * render_list — Dibuja la tabla de consultas recientes sin descifrar sus payloads.
+     *
+     * @return void
+     */
     private function render_list(): void
     {
         $contacts = Formularios_PW_Contact_Repository::list_recent();
@@ -77,6 +105,12 @@ final class Formularios_PW_Contact_Admin
         echo '</tbody></table></div>';
     }
 
+    /**
+     * render_detail — Descifra y presenta una consulta seleccionada.
+     *
+     * @param string $uid Identificador público interno de la consulta.
+     * @return void
+     */
     private function render_detail(string $uid): void
     {
         $contact = Formularios_PW_Contact_Repository::get($uid);
@@ -105,6 +139,13 @@ final class Formularios_PW_Contact_Admin
         echo '</div>';
     }
 
+    /**
+     * field — Imprime un campo de detalle escapando contenido y saltos de línea.
+     *
+     * @param string $label Etiqueta visible del dato.
+     * @param mixed  $value Valor recuperado del payload o del índice.
+     * @return void
+     */
     private function field(string $label, $value): void
     {
         echo '<p><strong>' . esc_html($label) . ':</strong><br>' . nl2br(esc_html((string) $value)) . '</p>';

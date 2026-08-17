@@ -20,10 +20,14 @@
     box-sizing: border-box;
 }
 
+.codepty-contact [hidden] {
+    display: none !important;
+}
+
 .codepty-contact__whatsapp {
     margin-bottom: 14px;
     padding: 16px;
-    display: flex;
+    display: none;
     gap: 14px;
     align-items: center;
     border: 1px solid rgba(17, 184, 90, 0.28);
@@ -47,7 +51,7 @@
 
 .codepty-contact__whatsapp-number {
     color: #1261a6;
-    font-size: clamp(1.45rem, 5vw, 1.75rem);
+    font-size: clamp(1.05rem, 4.5vw, 1.35rem);
     font-weight: 900;
     line-height: 1.2;
     text-decoration: none;
@@ -128,6 +132,153 @@
     line-height: 1.5;
 }
 
+.codepty-contact.is-whatsapp-mode .codepty-contact__privacy {
+    padding: 12px 14px;
+    border-radius: 11px;
+    background: #eef6ff;
+    color: #263650;
+}
+
+.codepty-contact__verification {
+    padding: 4px 2px;
+}
+
+.codepty-contact__verification-intro {
+    margin: 0 0 3px;
+    color: #384761;
+    line-height: 1.5;
+}
+
+.codepty-contact__verification-email {
+    display: block;
+    overflow-wrap: anywhere;
+    color: #17233c;
+    font-size: 1.08em;
+}
+
+.codepty-contact__change-email,
+.codepty-contact__resend {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: #1261a6;
+    font: inherit;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.codepty-contact__change-email {
+    margin-top: 5px;
+}
+
+.codepty-contact__change-email:hover,
+.codepty-contact__change-email:focus-visible,
+.codepty-contact__resend:hover,
+.codepty-contact__resend:focus-visible {
+    color: #083f72;
+}
+
+.codepty-contact__verification-status {
+    min-height: 1.4em;
+    margin: 10px 0;
+    color: #516078;
+    line-height: 1.4;
+}
+
+.codepty-contact__verification-status.is-error {
+    padding: 10px 12px;
+    border: 1px solid #efb0b0;
+    border-radius: 10px;
+    background: #fff1f1;
+    color: #a02222;
+}
+
+.codepty-contact__verification-status.is-success {
+    color: #23643a;
+}
+
+.codepty-contact__code-row {
+    display: flex;
+    justify-content: space-between;
+    gap: clamp(8px, 3vw, 20px);
+    margin-top: 18px;
+}
+
+.codepty-contact__code {
+    width: min(22%, 72px);
+    min-height: 58px;
+    padding: 8px;
+    border: 1px solid #1261a6;
+    border-radius: 10px;
+    background: #fff;
+    color: #17233c;
+    font: inherit;
+    font-size: 1.45rem;
+    font-weight: 900;
+    text-align: center;
+    text-transform: uppercase;
+}
+
+.codepty-contact__code.is-error {
+    border-color: #e2252b;
+    background: #fffafa;
+}
+
+.codepty-contact__code:focus {
+    border-color: #1261a6;
+    outline: 3px solid rgba(18, 97, 166, 0.16);
+}
+
+.codepty-contact__code-help {
+    margin: 7px 0 0;
+    color: #68758a;
+    font-size: 0.9em;
+}
+
+.codepty-contact__resend-help {
+    margin: 12px 0 0;
+    color: #384761;
+}
+
+.codepty-contact__initial-status {
+    min-height: 0;
+    margin: 0;
+    color: #a02222;
+    line-height: 1.4;
+    text-align: center;
+}
+
+.codepty-contact__initial-status:not(:empty) {
+    min-height: 1.4em;
+    margin-top: 10px;
+}
+
+.codepty-contact__success {
+    padding: 26px 4px 4px;
+    text-align: center;
+}
+
+.codepty-contact__success-icon {
+    width: 72px;
+    height: 72px;
+    margin: 0 auto 18px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: #11bd5a;
+    color: #fff;
+    font-size: 2.8rem;
+    font-weight: 900;
+    line-height: 1;
+}
+
+.codepty-contact__success p {
+    margin: 8px auto 28px;
+    max-width: 34rem;
+    color: #384761;
+    line-height: 1.6;
+}
+
 .codepty-contact__submit {
     width: 100%;
     min-height: 54px;
@@ -144,6 +295,57 @@
     margin-top: auto;
 }
 
+.codepty-contact__start {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.codepty-contact__start-icon {
+    width: 25px;
+    height: 25px;
+    flex: 0 0 25px;
+}
+
+.codepty-contact.is-whatsapp-mode .codepty-contact__start {
+    background: #08b92f;
+    box-shadow: 0 12px 26px rgba(8, 185, 47, 0.24);
+}
+
+.codepty-contact.is-whatsapp-mode .codepty-contact__start:hover,
+.codepty-contact.is-whatsapp-mode .codepty-contact__start:focus-visible {
+    background: #079b29;
+}
+
+.codepty-contact__channel-switch {
+    align-self: center;
+    margin: 12px auto 0;
+    padding: 4px;
+    border: 0;
+    background: transparent;
+    color: #1261a6;
+    font: inherit;
+    font-weight: 700;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    cursor: pointer;
+}
+
+.codepty-contact__channel-switch:hover,
+.codepty-contact__channel-switch:focus-visible {
+    color: #083f72;
+}
+
+.codepty-contact__channel-switch:disabled {
+    cursor: wait;
+    opacity: 0.6;
+}
+
+.codepty-contact__start.is-loading .codepty-contact__start-icon {
+    display: none;
+}
+
 .codepty-contact__submit:hover,
 .codepty-contact__submit:focus-visible {
     background: #b92027;
@@ -151,7 +353,24 @@
 
 .codepty-contact__submit:disabled {
     cursor: wait;
-    opacity: 0.7;
+    opacity: 1;
+}
+
+.codepty-contact__submit.is-loading::before {
+    width: 20px;
+    height: 20px;
+    margin-right: 10px;
+    display: inline-block;
+    border: 3px solid rgba(255, 255, 255, 0.5);
+    border-top-color: #fff;
+    border-radius: 50%;
+    content: '';
+    vertical-align: -4px;
+    animation: codepty-contact-spin 0.75s linear infinite;
+}
+
+@keyframes codepty-contact-spin {
+    to { transform: rotate(360deg); }
 }
 
 .codepty-contact__notice {
@@ -241,21 +460,22 @@
     margin-top: auto;
 }
 
-.codepty-contact__progress {
-    min-height: 0;
-    margin: 0;
-    text-align: center;
-}
-
-.codepty-contact__progress:not(:empty) {
-    min-height: 1.3em;
-    margin-top: 8px;
-}
-
 @media (min-width: 768px) {
     .contact > .codepty-contact {
         padding: 0;
     }
+
+    .contact > .codepty-contact .codepty-contact__initial,
+    .package-hero-contact .codepty-contact__initial {
+        min-height: 0;
+        display: flex;
+        flex: 1;
+        flex-direction: column;
+    }
+}
+
+.codepty-contact.is-smartphone.is-whatsapp-mode .codepty-contact__whatsapp {
+    display: flex;
 }
 
 @media (max-width: 600px) {
@@ -266,5 +486,16 @@
 
     .contact > .codepty-contact {
         padding: 4px;
+    }
+
+    .codepty-contact__code {
+        min-height: 54px;
+        font-size: 1.25rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .codepty-contact__submit.is-loading::before {
+        animation-duration: 1.5s;
     }
 }

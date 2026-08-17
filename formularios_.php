@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Formularios Presencia Web CodePTY
  * Description: Gestión de expedientes de Presencia Web con formulario externo por enlace secreto y formulario interno.
- * Version: 0.2.3
+ * Version: 0.6.0
  * Author: CodePTY
  * Text Domain: formularios-pw
  * Requires at least: 6.4
@@ -13,7 +13,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('FORMULARIOS_PW_VERSION', '0.2.3');
+define('FORMULARIOS_PW_VERSION', '0.6.0');
 define('FORMULARIOS_PW_FILE', __FILE__);
 define('FORMULARIOS_PW_DIR', plugin_dir_path(__FILE__));
 define('FORMULARIOS_PW_URL', plugin_dir_url(__FILE__));
@@ -21,7 +21,7 @@ define('FORMULARIOS_PW_CAPABILITY', 'manage_codepty_presencia');
 
 // Valores globales provisionales. Pueden definirse antes en wp-config.php para reemplazarlos.
 if (!defined('CODEPTY_CONTACT_WHATSAPP')) {
-    define('CODEPTY_CONTACT_WHATSAPP', '+507 6123-4567');
+    define('CODEPTY_CONTACT_WHATSAPP', '+507 6672 6470');
 }
 
 if (!defined('CODEPTY_CONTACT_EMAIL')) {

@@ -54,6 +54,11 @@ final class Formularios_PW_DB
         return $wpdb->prefix . 'codepty_pw_payloads';
     }
 
+    /**
+     * table_contacts — Devuelve el nombre completo de la tabla de consultas generales.
+     *
+     * @return string
+     */
     public static function table_contacts(): string
     {
         global $wpdb;
