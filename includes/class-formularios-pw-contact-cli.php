@@ -14,7 +14,7 @@ final class Formularios_PW_Contact_CLI
      *
      * ## OPTIONS
      *
-     * [--limit=<número>]
+     * [--limit=<numero>]
      * : Número de consultas, entre 1 y 200. Predeterminado: 100.
      *
      * @param array $args Argumentos posicionales no utilizados.

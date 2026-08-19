@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Formularios Presencia Web CodePTY
  * Description: Gestión de expedientes de Presencia Web con formulario externo por enlace secreto y formulario interno.
- * Version: 0.6.2
+ * Version: 0.6.3
  * Author: CodePTY
  * Text Domain: formularios-pw
  * Requires at least: 6.4
@@ -13,7 +13,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('FORMULARIOS_PW_VERSION', '0.6.2');
+define('FORMULARIOS_PW_VERSION', '0.6.3');
 define('FORMULARIOS_PW_FILE', __FILE__);
 define('FORMULARIOS_PW_DIR', plugin_dir_path(__FILE__));
 define('FORMULARIOS_PW_URL', plugin_dir_url(__FILE__));
