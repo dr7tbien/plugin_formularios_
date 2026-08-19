@@ -28,9 +28,14 @@
         var name = form.querySelector('input[name="name"]');
         var message = form.querySelector('textarea[name="message"]');
         var submissionId = form.querySelector('input[name="submission_id"]');
+        var originUrl = form.querySelector('input[name="origin_url"]');
         var authorizedAction = '';
         var smartphone = isSmartphone();
         var channel = smartphone ? 'whatsapp' : 'email';
+
+        if (originUrl) {
+            originUrl.value = window.location.href;
+        }
 
         /**
          * isSmartphone — Detecta teléfonos mediante Client Hints y agentes móviles conocidos.
@@ -127,9 +132,9 @@
         }
 
         /**
-         * commonRequestBody — Construye la carga común para las operaciones AJAX del formulario.
+         * commonRequestBody - Construye la carga común para las operaciones AJAX del formulario.
          *
-         * Incluye identidad del envío, nonces, honeypot, marca temporal y datos visibles.
+         * Incluye identidad del envío, página de origen, nonces, honeypot, marca temporal y datos visibles.
          *
          * @param {string} action Acción AJAX de WordPress que recibirá la petición.
          * @return {URLSearchParams} Carga codificada lista para enviar.
@@ -139,7 +144,7 @@
             body.set('action', action);
             body.set('nonce', formulariosPWContact.nonce);
             body.set('submission_id', submissionId.value);
-            ['name', 'phone', 'email', 'message', 'website', 'form_started', 'codepty_contact_nonce'].forEach(function (name) {
+            ['name', 'phone', 'email', 'message', 'website', 'form_started', 'origin_url', 'codepty_contact_nonce'].forEach(function (name) {
                 var field = form.querySelector('[name="' + name + '"]');
                 body.set(name, field ? field.value : '');
             });

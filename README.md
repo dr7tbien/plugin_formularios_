@@ -30,6 +30,40 @@ preparado sin solicitar verificación ni registrar la consulta como recibida. El
 puede cambiar a email sin perder sus datos; ese recorrido sí exige la clave temporal. En
 ordenadores y tabletas solo se ofrece el formulario verificado por email.
 
+### Página de origen
+
+Cada consulta enviada por email conserva la **Página de origen**, es decir, la página
+interna de CodePTY que contenía el shortcode cuando el visitante inició el envío. El
+navegador coloca `window.location.href` en un campo oculto y lo incluye en las peticiones
+del formulario; así la captura no depende de `HTTP_REFERER`, que puede perderse en AJAX.
+
+El servidor no confía directamente en ese campo: admite únicamente URLs HTTP o HTTPS cuyo
+host y puerto coincidan con WordPress, elimina parámetros de consulta y fragmentos, y
+almacena solo esquema, host, puerto cuando existe y ruta. En **Presencia Web > Consultas
+generales**, una página válida aparece con título o ruta y como enlace seguro en una pestaña
+nueva. Si el valor está vacío, malformado, pertenece a otro dominio o un registro antiguo no
+contiene un origen interno válido, se muestra **No identificado**.
+
+### Eliminación de consultas
+
+El detalle administrativo muestra el UID técnico de la consulta y un botón **Eliminar
+consulta**. La acción requiere la capacidad privada del plugin, petición POST, nonce y una
+confirmación explícita. El borrado es definitivo y elimina conjuntamente el payload
+cifrado, la fila del índice y la auditoría asociada; no afecta a expedientes de clientes.
+
+WP-CLI permite localizar y eliminar consultas concretas por sus UID:
+
+```bash
+wp formularios consultas listar
+wp formularios consultas ver a83f0123456789abcdef0123
+wp formularios consultas eliminar a83f0123456789abcdef0123 --dry-run
+wp formularios consultas eliminar a83f0123456789abcdef0123 --yes
+```
+
+`listar` acepta `--limit=<número>` entre 1 y 200. `eliminar` admite varios UID en una sola
+orden, informa por separado de consultas encontradas, ausentes e identificadores inválidos,
+y exige `--yes` para modificar datos. Se recomienda ejecutar siempre primero `--dry-run`.
+
 Los destinos provisionales se definen globalmente y pueden reemplazarse en `wp-config.php`
 antes de cargar el plugin:
 
@@ -182,19 +216,50 @@ wp dr-readme update --target="$(pwd)" --block=TREE
 │   │   + Formularios_PW_Contact_Admin()
 │   │   │   # Presenta consultas cifradas al equipo autorizado.
 │   │   + register()
-│   │   │   # Registra menú y recursos de la pantalla privada de consultas.
+│   │   │   # Registra menú, recursos y eliminación de la pantalla privada de consultas.
 │   │   + register_menu()
 │   │   │   # Añade Consultas generales como subpágina de Presencia Web.
 │   │   + enqueue_assets()
 │   │   │   # Carga estilos solo dentro de la pantalla de consultas.
 │   │   + render()
-│   │   │   # Comprueba permisos y muestra listado o detalle de una consulta.
+│   │   │   # Comprueba permisos y muestra listado, detalle o resultado de eliminación.
 │   │   + render_list()
-│   │   │   # Dibuja la tabla de consultas recientes sin descifrar sus payloads.
+│   │   │   # Dibuja la tabla y descifra únicamente el origen de cada consulta reciente.
 │   │   + render_detail()
-│   │   │   # Descifra y presenta una consulta seleccionada.
+│   │   │   # Descifra y presenta una consulta seleccionada con su página de origen.
+│   │   + handle_delete()
+│   │   │   # Valida y ejecuta el borrado individual de una consulta desde administración.
 │   │   + field()
 │   │   │   # Imprime un campo de detalle escapando contenido y saltos de línea.
+│   │   + render_delete_form()
+│   │   │   # Muestra la acción destructiva protegida para una consulta concreta.
+│   │   + render_delete_notice()
+│   │   │   # Presenta el resultado de un intento de eliminación sin revelar datos.
+│   │   + redirect_after_delete()
+│   │   │   # Regresa al listado después de una eliminación administrativa.
+│   │   + get_origin_presentation()
+│   │   │   # Obtiene una página interna legible desde el payload o un registro antiguo.
+│   │   + normalize_internal_origin_url()
+│   │   │   # Valida una URL almacenada y elimina consulta y fragmento.
+│   │   + origin_html()
+│   │   │   # Genera la celda enlazada de una página de origen válida.
+│   │   + origin_detail_html()
+│   │   │   # Genera el campo de origen del detalle con enlace seguro cuando procede.
+│   ├── class-formularios-pw-contact-cli.php
+│   │   + Formularios_PW_Contact_CLI()
+│   │   │   # Gestiona consultas generales concretas mediante WP-CLI.
+│   │   + listar()
+│   │   │   # Muestra UID y metadatos operativos de las consultas recientes.
+│   │   + ver()
+│   │   │   # Descifra y muestra una consulta identificada por UID.
+│   │   + eliminar()
+│   │   │   # Elimina por UID una o varias consultas generales de forma explícita.
+│   │   + required_uid()
+│   │   │   # Valida el UID obligatorio de un comando individual.
+│   │   + origin_label()
+│   │   │   # Obtiene una ruta interna segura para la salida de WP-CLI.
+│   │   + terminal_text()
+│   │   │   # Elimina controles que podrían alterar la salida de una terminal.
 │   ├── class-formularios-pw-contact-form.php
 │   │   + Formularios_PW_Contact_Form()
 │   │   │   # Coordina renderizado, verificación y envío del contacto público.
@@ -247,7 +312,9 @@ wp dr-readme update --target="$(pwd)" --block=TREE
 │   │   + is_local_url()
 │   │   │   # Comprueba que una URL pertenece al mismo host de WordPress.
 │   │   + resolve_origin()
-│   │   │   # Describe la página desde la que se inició la consulta.
+│   │   │   # Valida y describe la página interna declarada por el navegador.
+│   │   + normalize_origin_url()
+│   │   │   # Reduce una URL al esquema, host, puerto y ruta del sitio actual.
 │   │   + send_email()
 │   │   │   # Entrega la consulta al destinatario operativo configurado.
 │   │   + redirect_with_state()
@@ -265,6 +332,10 @@ wp dr-readme update --target="$(pwd)" --block=TREE
 │   │   │   # Devuelve consultas recientes sin descifrar su contenido.
 │   │   + get()
 │   │   │   # Recupera la fila de índice de una consulta concreta.
+│   │   + delete()
+│   │   │   # Elimina definitivamente una consulta, su payload cifrado y su auditoría.
+│   │   + is_valid_uid()
+│   │   │   # Comprueba el formato no ambiguo de un identificador de consulta.
 │   │   + purge_before()
 │   │   │   # Elimina consultas, payloads cifrados y auditoría anteriores al umbral.
 │   ├── class-formularios-pw-crypto.php

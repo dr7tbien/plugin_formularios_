@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Formularios Presencia Web CodePTY
  * Description: Gestión de expedientes de Presencia Web con formulario externo por enlace secreto y formulario interno.
- * Version: 0.6.0
+ * Version: 0.6.2
  * Author: CodePTY
  * Text Domain: formularios-pw
  * Requires at least: 6.4
@@ -13,7 +13,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('FORMULARIOS_PW_VERSION', '0.6.0');
+define('FORMULARIOS_PW_VERSION', '0.6.2');
 define('FORMULARIOS_PW_FILE', __FILE__);
 define('FORMULARIOS_PW_DIR', plugin_dir_path(__FILE__));
 define('FORMULARIOS_PW_URL', plugin_dir_url(__FILE__));
@@ -21,17 +21,19 @@ define('FORMULARIOS_PW_CAPABILITY', 'manage_codepty_presencia');
 
 // Valores globales provisionales. Pueden definirse antes en wp-config.php para reemplazarlos.
 if (!defined('CODEPTY_CONTACT_WHATSAPP')) {
-    define('CODEPTY_CONTACT_WHATSAPP', '+507 6672 6470');
+    define('CODEPTY_CONTACT_WHATSAPP', '');
 }
 
 if (!defined('CODEPTY_CONTACT_EMAIL')) {
-    define('CODEPTY_CONTACT_EMAIL', 'consultas@example.com');
+    define('CODEPTY_CONTACT_EMAIL', '');
 }
 
 autoload_formularios_pw_files();
 
 /**
- * autoload_formularios_pw_files — Carga manualmente las clases base del plugin.
+ * autoload_formularios_pw_files - Carga manualmente las clases base del plugin.
+ *
+ * @return void
  */
 function autoload_formularios_pw_files(): void
 {
@@ -49,6 +51,7 @@ function autoload_formularios_pw_files(): void
         FORMULARIOS_PW_DIR . 'includes/class-formularios-pw-public-form.php',
         FORMULARIOS_PW_DIR . 'includes/class-formularios-pw-contact-form.php',
         FORMULARIOS_PW_DIR . 'includes/class-formularios-pw-contact-admin.php',
+        FORMULARIOS_PW_DIR . 'includes/class-formularios-pw-contact-cli.php',
         FORMULARIOS_PW_DIR . 'includes/class-formularios-pw-activator.php',
         FORMULARIOS_PW_DIR . 'includes/class-formularios-pw-plugin.php',
     );

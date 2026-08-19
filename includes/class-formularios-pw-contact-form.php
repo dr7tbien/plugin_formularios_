@@ -5,7 +5,7 @@ if (!defined('ABSPATH')) {
 }
 
 /**
- * Formularios_PW_Contact_Form — Coordina renderizado, verificación y envío del contacto público.
+ * Formularios_PW_Contact_Form - Coordina renderizado, verificación y envío del contacto público.
  *
  * El formulario recomienda WhatsApp en smartphones sin registrar una recepción. El recorrido
  * de email exige una clave temporal antes de cifrar, indexar y entregar la consulta.
@@ -82,7 +82,7 @@ final class Formularios_PW_Contact_Form
     }
 
     /**
-     * render — Genera una instancia accesible con estados inicial, verificación y éxito.
+     * render - Genera una instancia accesible con estados inicial, verificación y éxito.
      *
      * @return string HTML seguro del formulario y, si hace falta, estilos impresos tarde.
      */
@@ -119,6 +119,7 @@ final class Formularios_PW_Contact_Form
             <form class="codepty-contact__form" method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
                 <input type="hidden" name="submission_id" value="<?php echo esc_attr(wp_generate_uuid4()); ?>">
                 <input type="hidden" name="form_started" value="<?php echo esc_attr($this->form_started_token()); ?>">
+                <input type="hidden" name="origin_url" value="">
                 <?php wp_nonce_field(self::ACTION, 'codepty_contact_nonce'); ?>
 
                 <div class="codepty-contact__trap" aria-hidden="true">
@@ -225,7 +226,7 @@ final class Formularios_PW_Contact_Form
     }
 
     /**
-     * handle_submit — Valida, almacena cifrada y entrega por email una consulta autorizada.
+     * handle_submit - Valida, almacena cifrada y entrega por email una consulta autorizada.
      *
      * Atiende tanto AJAX como el fallback `admin-post.php`. Requiere nonce, formulario firmado,
      * límites de frecuencia y autorización ligada al email antes de crear la consulta.
@@ -289,7 +290,10 @@ final class Formularios_PW_Contact_Form
             $this->submit_failure($return_url, array('Este email ha realizado demasiados envíos. Espera una hora antes de volver a intentarlo.'), $values, 429);
         }
 
-        $origin = $this->resolve_origin($return_url);
+        $posted_origin = isset($_POST['origin_url']) && is_string($_POST['origin_url'])
+            ? wp_unslash($_POST['origin_url'])
+            : '';
+        $origin = $this->resolve_origin($posted_origin);
         $channel = 'email';
         $payload = array_merge(
             $values,
@@ -702,21 +706,78 @@ final class Formularios_PW_Contact_Form
     }
 
     /**
-     * resolve_origin — Describe la página desde la que se inició la consulta.
+     * resolve_origin - Valida y describe la página interna declarada por el navegador.
      *
-     * @param string $url URL local validada del formulario.
-     * @return array URL segura, ID opcional y título sanitizado.
+     * Elimina consulta y fragmento antes de conservar exclusivamente esquema, host, puerto
+     * opcional y ruta. Un valor vacío, externo o malformado produce un origen no identificado.
+     *
+     * @param string $url URL absoluta recibida desde el campo oculto del formulario.
+     * @return array URL interna limpia, ID opcional y título sanitizado.
      */
     private function resolve_origin(string $url): array
     {
+        $url = $this->normalize_origin_url($url);
+        if ('' === $url) {
+            return array(
+                'url' => '',
+                'post_id' => null,
+                'title' => '',
+            );
+        }
+
         $post_id = url_to_postid($url);
         $title = $post_id > 0 ? get_the_title($post_id) : '';
 
         return array(
-            'url' => esc_url_raw($url),
+            'url' => $url,
             'post_id' => $post_id > 0 ? $post_id : null,
             'title' => is_string($title) ? sanitize_text_field($title) : '',
         );
+    }
+
+    /**
+     * normalize_origin_url - Reduce una URL al esquema, host, puerto y ruta del sitio actual.
+     *
+     * @param string $url Valor no confiable recibido desde el navegador.
+     * @return string URL interna limpia o cadena vacía cuando no es aceptable.
+     */
+    private function normalize_origin_url(string $url): string
+    {
+        $url = trim($url);
+        if ('' === $url || strlen($url) > 2048) {
+            return '';
+        }
+
+        $url = esc_url_raw($url, array('http', 'https'));
+        $parts = wp_parse_url($url);
+        $site_parts = wp_parse_url(home_url('/'));
+        if (!is_array($parts) || !is_array($site_parts)) {
+            return '';
+        }
+
+        $scheme = strtolower((string) ($parts['scheme'] ?? ''));
+        $host = strtolower((string) ($parts['host'] ?? ''));
+        $site_host = strtolower((string) ($site_parts['host'] ?? ''));
+        if (!in_array($scheme, array('http', 'https'), true) || '' === $host || $host !== $site_host) {
+            return '';
+        }
+
+        if (isset($parts['user']) || isset($parts['pass'])) {
+            return '';
+        }
+
+        $port = isset($parts['port']) ? (int) $parts['port'] : null;
+        $site_port = isset($site_parts['port']) ? (int) $site_parts['port'] : null;
+        if ($port !== $site_port) {
+            return '';
+        }
+
+        $path = isset($parts['path']) && is_string($parts['path']) && '' !== $parts['path']
+            ? '/' . ltrim($parts['path'], '/')
+            : '/';
+        $authority = $scheme . '://' . $host . (null !== $port ? ':' . $port : '');
+
+        return esc_url_raw($authority . $path, array('http', 'https'));
     }
 
     /**

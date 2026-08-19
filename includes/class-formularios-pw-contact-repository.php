@@ -5,7 +5,7 @@ if (!defined('ABSPATH')) {
 }
 
 /**
- * Formularios_PW_Contact_Repository — Persiste consultas cifradas y su índice operativo mínimo.
+ * Formularios_PW_Contact_Repository - Persiste consultas cifradas y su índice operativo mínimo.
  */
 final class Formularios_PW_Contact_Repository
 {
@@ -120,6 +120,51 @@ final class Formularios_PW_Contact_Repository
         );
 
         return is_array($row) ? $row : null;
+    }
+
+    /**
+     * delete - Elimina definitivamente una consulta, su payload cifrado y su auditoría.
+     *
+     * @param string $contact_uid Identificador hexadecimal de la consulta.
+     * @return bool Indica si la consulta existía y su fila de índice fue eliminada.
+     */
+    public static function delete(string $contact_uid): bool
+    {
+        global $wpdb;
+
+        if (!self::is_valid_uid($contact_uid)) {
+            return false;
+        }
+
+        $contact = self::get($contact_uid);
+        if (!$contact) {
+            return false;
+        }
+
+        Formularios_PW_Storage::delete_contact_payload((string) $contact['storage_ref']);
+        $wpdb->delete(
+            Formularios_PW_DB::table_audit(),
+            array('case_uid' => $contact_uid),
+            array('%s')
+        );
+        $deleted = $wpdb->delete(
+            Formularios_PW_DB::table_contacts(),
+            array('contact_uid' => $contact_uid),
+            array('%s')
+        );
+
+        return false !== $deleted && $deleted > 0;
+    }
+
+    /**
+     * is_valid_uid - Comprueba el formato no ambiguo de un identificador de consulta.
+     *
+     * @param string $contact_uid Identificador recibido desde administración o WP-CLI.
+     * @return bool Indica si contiene exactamente 24 caracteres hexadecimales minúsculos.
+     */
+    public static function is_valid_uid(string $contact_uid): bool
+    {
+        return 1 === preg_match('/^[a-f0-9]{24}$/', $contact_uid);
     }
 
     /**
