@@ -7,8 +7,8 @@ if (!defined('ABSPATH')) {
 /**
  * Formularios_PW_Contact_Form - Coordina renderizado, verificación y envío del contacto público.
  *
- * El formulario recomienda WhatsApp en smartphones sin registrar una recepción. El recorrido
- * de email exige una clave temporal antes de cifrar, indexar y entregar la consulta.
+ * El formulario verifica el email y entrega la consulta directamente al correo configurado
+ * sin conservar el contenido en WordPress.
  */
 final class Formularios_PW_Contact_Form
 {
@@ -18,7 +18,6 @@ final class Formularios_PW_Contact_Form
     private const VERIFY_CODE_ACTION = 'formularios_pw_verify_contact_code';
     private const INVALIDATE_CODE_ACTION = 'formularios_pw_invalidate_contact_code';
     private const VERIFICATION_NONCE_ACTION = 'formularios_pw_contact_verification';
-    private const STATE_QUERY = 'codepty_contact_state';
     private const CODE_LIFETIME = 10 * MINUTE_IN_SECONDS;
     private const VERIFICATION_LIFETIME = 15 * MINUTE_IN_SECONDS;
     private const MAX_CODE_ATTEMPTS = 5;
@@ -29,15 +28,13 @@ final class Formularios_PW_Contact_Form
     private static $late_styles_printed = false;
 
     /**
-     * register — Registra shortcode, endpoints públicos y carga de recursos.
+     * register - Registra shortcode, endpoints públicos y carga de recursos.
      *
      * @return void
      */
     public function register(): void
     {
         add_shortcode(self::SHORTCODE, array($this, 'render'));
-        add_action('admin_post_' . self::ACTION, array($this, 'handle_submit'));
-        add_action('admin_post_nopriv_' . self::ACTION, array($this, 'handle_submit'));
         add_action('wp_ajax_' . self::ACTION, array($this, 'handle_submit'));
         add_action('wp_ajax_nopriv_' . self::ACTION, array($this, 'handle_submit'));
         add_action('wp_ajax_' . self::SEND_CODE_ACTION, array($this, 'handle_send_code'));
@@ -47,10 +44,11 @@ final class Formularios_PW_Contact_Form
         add_action('wp_ajax_' . self::INVALIDATE_CODE_ACTION, array($this, 'handle_invalidate_code'));
         add_action('wp_ajax_nopriv_' . self::INVALIDATE_CODE_ACTION, array($this, 'handle_invalidate_code'));
         add_action('wp_enqueue_scripts', array($this, 'register_assets'));
+        add_action('admin_notices', array($this, 'render_configuration_notice'));
     }
 
     /**
-     * register_assets — Declara CSS, JavaScript y configuración pública del formulario.
+     * register_assets - Declara CSS, JavaScript y configuración pública del formulario.
      *
      * Solo encola los recursos anticipadamente cuando el contenido consultado contiene el
      * shortcode; `render()` cubre inserciones tardías desde plantillas u otros constructores.
@@ -70,7 +68,6 @@ final class Formularios_PW_Contact_Form
                 'sendCodeAction' => self::SEND_CODE_ACTION,
                 'verifyCodeAction' => self::VERIFY_CODE_ACTION,
                 'invalidateCodeAction' => self::INVALIDATE_CODE_ACTION,
-                'whatsappUrl' => 'https://wa.me/' . preg_replace('/\D+/', '', (string) apply_filters('formularios_pw_contact_whatsapp', CODEPTY_CONTACT_WHATSAPP)),
             )
         );
 
@@ -101,22 +98,12 @@ final class Formularios_PW_Contact_Form
             self::$late_styles_printed = true;
         }
 
-        $state = $this->consume_state();
-        $values = is_array($state['values'] ?? null) ? $state['values'] : array();
-        $errors = is_array($state['errors'] ?? null) ? $state['errors'] : array();
-        $status = sanitize_key((string) ($state['status'] ?? ''));
+        $values = array();
         $privacy_url = get_privacy_policy_url();
         ob_start();
         ?>
         <section id="<?php echo esc_attr($id); ?>" class="codepty-contact" aria-label="Formulario de contacto">
-            <div class="codepty-contact__whatsapp">
-                <span class="codepty-contact__whatsapp-icon" aria-hidden="true">
-                    <svg viewBox="0 0 16 16" focusable="false"><path fill="currentColor" d="M13.6 2.33A7.85 7.85 0 0 0 7.99 0C3.63 0 .07 3.56.06 7.93c0 1.4.37 2.76 1.06 3.96L0 16l4.2-1.1a7.93 7.93 0 0 0 3.79.96h.01c4.37 0 7.93-3.56 7.93-7.93a7.9 7.9 0 0 0-2.33-5.6ZM8 14.52a6.57 6.57 0 0 1-3.36-.92l-.24-.14-2.5.65.67-2.43-.16-.25A6.56 6.56 0 0 1 1.4 7.92 6.6 6.6 0 0 1 8 1.34a6.56 6.56 0 0 1 4.66 1.93 6.56 6.56 0 0 1 1.93 4.66A6.59 6.59 0 0 1 8 14.52Zm3.61-4.93c-.2-.1-1.17-.58-1.35-.65-.18-.06-.32-.1-.45.1-.13.2-.51.65-.63.78-.11.13-.23.15-.43.05-.2-.1-.84-.31-1.59-.99-.59-.52-.99-1.17-1.1-1.37-.12-.2-.01-.3.08-.4.09-.09.2-.23.3-.35.1-.11.13-.2.2-.33.06-.13.03-.25-.02-.35-.05-.1-.44-1.07-.61-1.47-.16-.39-.32-.33-.44-.34h-.38a.73.73 0 0 0-.53.25c-.18.2-.69.68-.69 1.65 0 .98.71 1.92.81 2.05.1.13 1.4 2.13 3.38 2.99.47.2.84.33 1.13.42.48.15.9.13 1.25.08.38-.06 1.17-.48 1.34-.94.16-.47.16-.86.11-.95-.05-.08-.18-.13-.38-.23Z"/></svg>
-                </span>
-                <span class="codepty-contact__whatsapp-number">Atención directa por WhatsApp</span>
-            </div>
-
-            <form class="codepty-contact__form" method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
+            <form class="codepty-contact__form" method="post">
                 <input type="hidden" name="submission_id" value="<?php echo esc_attr(wp_generate_uuid4()); ?>">
                 <input type="hidden" name="form_started" value="<?php echo esc_attr($this->form_started_token()); ?>">
                 <input type="hidden" name="origin_url" value="">
@@ -127,19 +114,8 @@ final class Formularios_PW_Contact_Form
                     <input id="<?php echo esc_attr($id); ?>-website" name="website" type="text" value="" tabindex="-1" autocomplete="off">
                 </div>
 
-                <div class="codepty-contact__initial"<?php echo $status === 'success' ? ' hidden' : ''; ?>>
+                <div class="codepty-contact__initial">
                     <h2 id="<?php echo esc_attr($id); ?>-title" class="codepty-contact__title">Cuéntanos qué necesitas</h2>
-
-                    <?php if ($errors) : ?>
-                        <div class="codepty-contact__notice codepty-contact__notice--error" role="alert" tabindex="-1">
-                            <p>Revisa los siguientes datos:</p>
-                            <ul>
-                                <?php foreach ($errors as $error) : ?>
-                                    <li><?php echo esc_html((string) $error); ?></li>
-                                <?php endforeach; ?>
-                            </ul>
-                        </div>
-                    <?php endif; ?>
 
                     <?php $this->input($id, 'name', 'Nombre', 'text', $values, 'name'); ?>
                     <?php $this->input($id, 'phone', 'Teléfono', 'tel', $values, 'tel'); ?>
@@ -151,26 +127,16 @@ final class Formularios_PW_Contact_Form
                     </div>
 
                     <p class="codepty-contact__privacy">
-                        <span class="codepty-contact__privacy-email">
-                            Usaremos estos datos solamente para atender tu consulta.
-                            <?php if ($privacy_url) : ?>
-                                <a href="<?php echo esc_url($privacy_url); ?>">Consulta nuestra política de privacidad</a>.
-                            <?php endif; ?>
-                        </span>
-                        <span class="codepty-contact__privacy-whatsapp" hidden>
-                            Al continuar, abriremos WhatsApp con tu consulta preparada para que puedas revisarla y enviarla.
-                            <?php if ($privacy_url) : ?>
-                                <a href="<?php echo esc_url($privacy_url); ?>">Consulta nuestra política de privacidad</a>.
-                            <?php endif; ?>
-                        </span>
+                        Usaremos estos datos solamente para atender tu consulta.
+                        <?php if ($privacy_url) : ?>
+                            <a href="<?php echo esc_url($privacy_url); ?>">Consulta nuestra política de privacidad</a>.
+                        <?php endif; ?>
                     </p>
 
                     <button class="codepty-contact__submit codepty-contact__start" type="button">
-                        <svg class="codepty-contact__start-icon codepty-contact__start-icon--email" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" d="M3 5h18v14H3zM3 6l9 7 9-7"/></svg>
-                        <svg class="codepty-contact__start-icon codepty-contact__start-icon--whatsapp" viewBox="0 0 16 16" aria-hidden="true" hidden><path fill="currentColor" d="M13.6 2.33A7.85 7.85 0 0 0 7.99 0C3.63 0 .07 3.56.06 7.93c0 1.4.37 2.76 1.06 3.96L0 16l4.2-1.1a7.93 7.93 0 0 0 3.79.96h.01c4.37 0 7.93-3.56 7.93-7.93a7.9 7.9 0 0 0-2.33-5.6ZM8 14.52a6.57 6.57 0 0 1-3.36-.92l-.24-.14-2.5.65.67-2.43-.16-.25A6.56 6.56 0 0 1 1.4 7.92 6.6 6.6 0 0 1 8 1.34a6.56 6.56 0 0 1 4.66 1.93 6.56 6.56 0 0 1 1.93 4.66A6.59 6.59 0 0 1 8 14.52Zm3.61-4.93c-.2-.1-1.17-.58-1.35-.65-.18-.06-.32-.1-.45.1-.13.2-.51.65-.63.78-.11.13-.23.15-.43.05-.2-.1-.84-.31-1.59-.99-.59-.52-.99-1.17-1.1-1.37-.12-.2-.01-.3.08-.4.09-.09.2-.23.3-.35.1-.11.13-.2.2-.33.06-.13.03-.25-.02-.35-.05-.1-.44-1.07-.61-1.47-.16-.39-.32-.33-.44-.34h-.38a.73.73 0 0 0-.53.25c-.18.2-.69.68-.69 1.65 0 .98.71 1.92.81 2.05.1.13 1.4 2.13 3.38 2.99.47.2.84.33 1.13.42.48.15.9.13 1.25.08.38-.06 1.17-.48 1.34-.94.16-.47.16-.86.11-.95-.05-.08-.18-.13-.38-.23Z"/></svg>
+                        <svg class="codepty-contact__start-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" d="M3 5h18v14H3zM3 6l9 7 9-7"/></svg>
                         <span class="codepty-contact__start-label">Enviar consulta por email</span>
                     </button>
-                    <button class="codepty-contact__channel-switch" type="button" hidden>Prefiero enviar por email</button>
                     <p class="codepty-contact__initial-status" role="alert" aria-live="polite"></p>
                 </div>
 
@@ -192,7 +158,7 @@ final class Formularios_PW_Contact_Form
                     <p class="codepty-contact__code-help">La clave es válida durante 10 minutos.</p>
                 </div>
 
-                <div class="codepty-contact__success"<?php echo $status === 'success' ? '' : ' hidden'; ?> role="status" tabindex="-1">
+                <div class="codepty-contact__success" hidden role="status" tabindex="-1">
                     <span class="codepty-contact__success-icon" aria-hidden="true">✓</span>
                     <h2 class="codepty-contact__title">Consulta enviada correctamente</h2>
                     <p>Hemos recibido tu mensaje. Nos pondremos en contacto contigo lo antes posible.</p>
@@ -205,7 +171,7 @@ final class Formularios_PW_Contact_Form
     }
 
     /**
-     * input — Imprime un campo de texto común preservando valores devueltos tras un error.
+     * input - Imprime un campo de texto común preservando valores devueltos tras un error.
      *
      * @param string $id Prefijo único de la instancia del formulario.
      * @param string $name Nombre del campo enviado al servidor.
@@ -226,48 +192,43 @@ final class Formularios_PW_Contact_Form
     }
 
     /**
-     * handle_submit - Valida, almacena cifrada y entrega por email una consulta autorizada.
+     * handle_submit - Valida y entrega por email una consulta autorizada sin almacenarla.
      *
-     * Atiende tanto AJAX como el fallback `admin-post.php`. Requiere nonce, formulario firmado,
-     * límites de frecuencia y autorización ligada al email antes de crear la consulta.
+     * Requiere nonce, formulario firmado, límites de frecuencia y autorización ligada
+     * al email antes de llamar a `wp_mail()`.
      *
      * @return void Finaliza con JSON o redirección segura.
      */
     public function handle_submit(): void
     {
-        $return_url = $this->validated_return_url();
         $fingerprint = Formularios_PW_Rate_Limit::fingerprint_from_request('general-contact');
 
         // Limita también peticiones inválidas para que no puedan usarse para agotar recursos.
         if (!Formularios_PW_Rate_Limit::allow('contact-attempt|' . $fingerprint, 20, 10 * MINUTE_IN_SECONDS)) {
-            $this->submit_failure($return_url, array('Se han realizado demasiados intentos. Espera unos minutos antes de volver a intentarlo.'), array(), 429);
+            $this->submit_failure(array('Se han realizado demasiados intentos. Espera unos minutos antes de volver a intentarlo.'), 429);
         }
 
         if (!isset($_POST['codepty_contact_nonce']) || !wp_verify_nonce(sanitize_text_field((string) wp_unslash($_POST['codepty_contact_nonce'])), self::ACTION)) {
-            $this->submit_failure($return_url, array('La sesión del formulario caducó. Actualiza la página e inténtalo nuevamente.'), array(), 403);
+            $this->submit_failure(array('La sesión del formulario caducó. Actualiza la página e inténtalo nuevamente.'), 403);
         }
 
         if (trim((string) wp_unslash($_POST['website'] ?? '')) !== '') {
             // Respuesta indistinguible de un envío real para no enseñar al bot a evitar la trampa.
-            $this->submit_success($return_url);
+            $this->submit_success();
         }
 
         $started_token = sanitize_text_field((string) wp_unslash($_POST['form_started'] ?? ''));
         if (!$this->is_valid_form_started_token($started_token)) {
-            $this->submit_failure($return_url, array('No se pudo validar el envío. Actualiza la página e inténtalo nuevamente.'));
+            $this->submit_failure(array('No se pudo validar el envío. Actualiza la página e inténtalo nuevamente.'));
         }
 
         $submission_id = sanitize_text_field((string) wp_unslash($_POST['submission_id'] ?? ''));
         if (!wp_is_uuid($submission_id)) {
-            $this->submit_failure($return_url, array('El identificador del envío no es válido.'));
-        }
-
-        if (get_transient('fpw_contact_done_' . md5($submission_id))) {
-            $this->submit_success($return_url);
+            $this->submit_failure(array('El identificador del envío no es válido.'));
         }
 
         if (!Formularios_PW_Rate_Limit::allow('contact|' . $fingerprint, 5, HOUR_IN_SECONDS)) {
-            $this->submit_failure($return_url, array('Has realizado demasiados intentos. Espera una hora antes de volver a enviar.'), array(), 429);
+            $this->submit_failure(array('Has realizado demasiados intentos. Espera una hora antes de volver a enviar.'), 429);
         }
 
         $values = array(
@@ -278,55 +239,48 @@ final class Formularios_PW_Contact_Form
         );
         $errors = $this->validate($values);
         if ($errors) {
-            $this->submit_failure($return_url, $errors, $values);
+            $this->submit_failure($errors);
         }
 
         if (!$this->is_submission_verified($submission_id, $values['email'])) {
-            $this->submit_failure($return_url, array('Debes verificar tu email antes de enviar la consulta.'), $values, 403);
+            $this->submit_failure(array('Debes verificar tu email antes de enviar la consulta.'), 403);
         }
 
         $email_fingerprint = hash_hmac('sha256', strtolower($values['email']), wp_salt('nonce'));
         if (!Formularios_PW_Rate_Limit::allow('contact-email|' . $email_fingerprint, 3, HOUR_IN_SECONDS)) {
-            $this->submit_failure($return_url, array('Este email ha realizado demasiados envíos. Espera una hora antes de volver a intentarlo.'), $values, 429);
+            $this->submit_failure(array('Este email ha realizado demasiados envíos. Espera una hora antes de volver a intentarlo.'), 429);
         }
 
         $posted_origin = isset($_POST['origin_url']) && is_string($_POST['origin_url'])
             ? wp_unslash($_POST['origin_url'])
             : '';
         $origin = $this->resolve_origin($posted_origin);
-        $channel = 'email';
         $payload = array_merge(
             $values,
             array(
                 'origin_url' => $origin['url'],
                 'origin_title' => $origin['title'],
                 'origin_post_id' => $origin['post_id'],
-                'submitted_at' => gmdate('c'),
+                'submitted_at' => wp_date('Y-m-d H:i:s T'),
             )
         );
 
         try {
-            $contact = Formularios_PW_Contact_Repository::create($payload, $channel, $origin['post_id']);
-            set_transient('fpw_contact_done_' . md5($submission_id), 1, DAY_IN_SECONDS);
-            delete_transient($this->verified_transient_key($submission_id));
-
             $sent = $this->send_email($payload);
-            Formularios_PW_Contact_Repository::set_delivery_status((string) $contact['contact_uid'], $sent ? 'email_sent' : 'email_failed');
-            if (!$sent) {
-                if (wp_doing_ajax()) {
-                    $this->submit_success($return_url, array('deliveryWarning' => 'La consulta quedó registrada y nuestro equipo podrá revisarla internamente.'));
-                }
-                $this->submit_failure($return_url, array('La consulta quedó registrada, pero el correo no pudo enviarse. Nuestro equipo podrá revisarla internamente.'));
-            }
         } catch (Throwable $e) {
-            $this->submit_failure($return_url, array('No pudimos registrar tu consulta. Inténtalo nuevamente más tarde.'), $values, 500);
+            $sent = false;
         }
 
-        $this->submit_success($return_url);
+        if (!$sent) {
+            $this->submit_failure(array('No pudimos enviar tu consulta. Inténtalo nuevamente más tarde.'), 500);
+        }
+
+        delete_transient($this->verified_transient_key($submission_id));
+        $this->submit_success();
     }
 
     /**
-     * handle_send_code — Genera y envía al visitante una clave temporal de cuatro caracteres.
+     * handle_send_code - Genera y envía al visitante una clave temporal de cuatro caracteres.
      *
      * Valida todos los campos del recorrido email, aplica honeypot, tiempo mínimo, cooldown y
      * límites por IP/email. Una clave nueva invalida la autorización previa del envío.
@@ -336,6 +290,10 @@ final class Formularios_PW_Contact_Form
     public function handle_send_code(): void
     {
         $this->guard_verification_ajax();
+
+        if (!$this->configured_recipient()) {
+            wp_send_json_error(array('message' => 'El formulario no está disponible temporalmente. Inténtalo de nuevo más tarde.'), 503);
+        }
 
         $submission_id = $this->posted_submission_id();
         if (trim((string) wp_unslash($_POST['website'] ?? '')) !== '') {
@@ -385,7 +343,7 @@ final class Formularios_PW_Contact_Form
     }
 
     /**
-     * handle_invalidate_code — Revoca clave y autorización al regresar para cambiar el email.
+     * handle_invalidate_code - Revoca clave y autorización al regresar para cambiar el email.
      *
      * @return void Finaliza con una respuesta JSON de WordPress.
      */
@@ -399,7 +357,7 @@ final class Formularios_PW_Contact_Form
     }
 
     /**
-     * handle_verify_code — Valida la clave y autoriza temporalmente la consulta y el email.
+     * handle_verify_code - Valida la clave y autoriza temporalmente la consulta y el email.
      *
      * La clave es de un solo uso y admite un máximo limitado de intentos. La autorización
      * resultante queda vinculada al UUID del formulario y a la huella del email.
@@ -456,7 +414,7 @@ final class Formularios_PW_Contact_Form
     }
 
     /**
-     * validate — Comprueba los datos obligatorios del recorrido de email.
+     * validate - Comprueba los datos obligatorios del recorrido de email.
      *
      * @param array $values Nombre, teléfono, email y mensaje ya sanitizados.
      * @return array Mensajes de validación; vacío cuando todos los datos son válidos.
@@ -483,7 +441,7 @@ final class Formularios_PW_Contact_Form
     }
 
     /**
-     * posted_values — Extrae y sanitiza los campos públicos recibidos por POST.
+     * posted_values - Extrae y sanitiza los campos públicos recibidos por POST.
      *
      * @return array Nombre, teléfono, email y mensaje normalizados.
      */
@@ -498,41 +456,30 @@ final class Formularios_PW_Contact_Form
     }
 
     /**
-     * submit_failure — Devuelve un fallo uniforme por AJAX o mediante estado redirigido.
+     * submit_failure - Devuelve un fallo JSON uniforme sin conservar los campos recibidos.
      *
-     * @param string $return_url URL local a la que regresar en el fallback sin JavaScript.
      * @param array  $errors Mensajes seguros destinados al visitante.
-     * @param array  $values Valores sanitizados que deben conservarse.
      * @param int    $status_code Código HTTP para la respuesta AJAX.
      * @return void Finaliza la petición.
      */
-    private function submit_failure(string $return_url, array $errors, array $values = array(), int $status_code = 400): void
+    private function submit_failure(array $errors, int $status_code = 400): void
     {
-        if (wp_doing_ajax()) {
-            wp_send_json_error(array('message' => implode(' ', $errors)), $status_code);
-        }
-
-        $this->redirect_with_state($return_url, array('errors' => $errors, 'values' => $values));
+        wp_send_json_error(array('message' => implode(' ', $errors)), $status_code);
     }
 
     /**
-     * submit_success — Devuelve éxito por AJAX o redirige con un estado efímero.
+     * submit_success - Devuelve éxito JSON sin crear estado persistente adicional.
      *
-     * @param string $return_url URL local del formulario.
      * @param array  $data Datos adicionales de la respuesta AJAX.
      * @return void Finaliza la petición.
      */
-    private function submit_success(string $return_url, array $data = array()): void
+    private function submit_success(array $data = array()): void
     {
-        if (wp_doing_ajax()) {
-            wp_send_json_success($data);
-        }
-
-        $this->redirect_with_state($return_url, array('status' => 'success'));
+        wp_send_json_success($data);
     }
 
     /**
-     * guard_verification_ajax — Rechaza operaciones de clave con nonce ausente o caducado.
+     * guard_verification_ajax - Rechaza operaciones de clave con nonce ausente o caducado.
      *
      * @return void Finaliza con error JSON si la sesión pública no es válida.
      */
@@ -545,7 +492,7 @@ final class Formularios_PW_Contact_Form
     }
 
     /**
-     * posted_submission_id — Recupera y valida el UUID que identifica esta instancia.
+     * posted_submission_id - Recupera y valida el UUID que identifica esta instancia.
      *
      * @return string UUID válido del formulario.
      */
@@ -560,7 +507,7 @@ final class Formularios_PW_Contact_Form
     }
 
     /**
-     * generate_code — Crea una clave de cuatro caracteres sin símbolos visualmente ambiguos.
+     * generate_code - Crea una clave de cuatro caracteres sin símbolos visualmente ambiguos.
      *
      * @return string Clave aleatoria en mayúsculas.
      * @throws Exception Si el sistema no puede producir aleatoriedad criptográfica.
@@ -577,7 +524,7 @@ final class Formularios_PW_Contact_Form
     }
 
     /**
-     * send_verification_email — Envía la clave de un solo uso al email del visitante.
+     * send_verification_email - Envía la clave de un solo uso al email del visitante.
      *
      * @param string $email Destinatario previamente validado.
      * @param string $code Clave alfanumérica generada para esta consulta.
@@ -592,7 +539,7 @@ final class Formularios_PW_Contact_Form
     }
 
     /**
-     * email_fingerprint — Seudonimiza un email para límites y vinculaciones temporales.
+     * email_fingerprint - Seudonimiza un email para límites y vinculaciones temporales.
      *
      * @param string $email Dirección ya sanitizada.
      * @return string HMAC SHA-256 no reversible con la sal de WordPress.
@@ -603,7 +550,7 @@ final class Formularios_PW_Contact_Form
     }
 
     /**
-     * code_transient_key — Deriva la clave de transient que guarda el desafío temporal.
+     * code_transient_key - Deriva la clave de transient que guarda el desafío temporal.
      *
      * @param string $submission_id UUID válido del formulario.
      * @return string Nombre acotado para la API de transients.
@@ -614,7 +561,7 @@ final class Formularios_PW_Contact_Form
     }
 
     /**
-     * verified_transient_key — Deriva la clave de transient de la autorización verificada.
+     * verified_transient_key - Deriva la clave de transient de la autorización verificada.
      *
      * @param string $submission_id UUID válido del formulario.
      * @return string Nombre acotado para la API de transients.
@@ -625,7 +572,7 @@ final class Formularios_PW_Contact_Form
     }
 
     /**
-     * is_submission_verified — Confirma que UUID y email comparten autorización vigente.
+     * is_submission_verified - Confirma que UUID y email comparten autorización vigente.
      *
      * @param string $submission_id UUID del formulario enviado.
      * @param string $email Email sanitizado incluido en la consulta.
@@ -641,7 +588,7 @@ final class Formularios_PW_Contact_Form
     }
 
     /**
-     * form_started_token — Firma la hora de renderizado para detectar envíos instantáneos.
+     * form_started_token - Firma la hora de renderizado para detectar envíos instantáneos.
      *
      * @return string Marca Unix y HMAC separados por punto.
      */
@@ -654,7 +601,7 @@ final class Formularios_PW_Contact_Form
     }
 
     /**
-     * is_valid_form_started_token — Comprueba firma y antigüedad razonable del formulario.
+     * is_valid_form_started_token - Comprueba firma y antigüedad razonable del formulario.
      *
      * @param string $token Marca temporal firmada recibida desde el formulario.
      * @return bool Indica si el formulario no es instantáneo ni excesivamente antiguo.
@@ -674,35 +621,6 @@ final class Formularios_PW_Contact_Form
         $expected = hash_hmac('sha256', self::ACTION . '|' . $started_at, wp_salt('nonce'));
 
         return hash_equals($expected, $matches[2]);
-    }
-
-    /**
-     * validated_return_url — Obtiene una URL local limpia para el fallback por redirección.
-     *
-     * @return string Referer local sin estado anterior o portada del sitio.
-     */
-    private function validated_return_url(): string
-    {
-        $referer = wp_get_referer();
-        if (!$referer || !$this->is_local_url($referer)) {
-            return home_url('/');
-        }
-
-        return remove_query_arg(self::STATE_QUERY, $referer);
-    }
-
-    /**
-     * is_local_url — Comprueba que una URL pertenece al mismo host de WordPress.
-     *
-     * @param string $url URL absoluta que debe verificarse.
-     * @return bool Indica si coincide con el host del sitio.
-     */
-    private function is_local_url(string $url): bool
-    {
-        $site_host = wp_parse_url(home_url('/'), PHP_URL_HOST);
-        $url_host = wp_parse_url($url, PHP_URL_HOST);
-
-        return is_string($site_host) && is_string($url_host) && strtolower($site_host) === strtolower($url_host);
     }
 
     /**
@@ -781,57 +699,56 @@ final class Formularios_PW_Contact_Form
     }
 
     /**
-     * send_email — Entrega la consulta al destinatario operativo configurado.
+     * send_email - Entrega la consulta al destinatario operativo configurado.
      *
      * @param array $payload Consulta sanitizada junto con sus datos de origen.
      * @return bool Resultado de `wp_mail()` o `false` si el destinatario no es válido.
      */
     private function send_email(array $payload): bool
     {
-        $recipient = sanitize_email((string) apply_filters('formularios_pw_contact_email', CODEPTY_CONTACT_EMAIL));
-        if (!is_email($recipient)) {
+        $recipient = $this->configured_recipient();
+        if (!$recipient) {
             return false;
         }
 
         $subject = 'Nueva consulta general en CodePTY';
-        $body = "Nombre: {$payload['name']}\nTeléfono: {$payload['phone']}\nEmail: {$payload['email']}\n\nMensaje:\n{$payload['message']}\n\nOrigen: {$payload['origin_title']}\n{$payload['origin_url']}";
+        $origin_title = $payload['origin_title'] !== '' ? $payload['origin_title'] : 'No identificado';
+        $origin_url = $payload['origin_url'] !== '' ? $payload['origin_url'] : 'No identificado';
+        $body = "Nombre: {$payload['name']}\n"
+            . "Teléfono: {$payload['phone']}\n"
+            . "Email: {$payload['email']}\n\n"
+            . "Mensaje:\n{$payload['message']}\n\n"
+            . "Página de origen: {$origin_title}\n{$origin_url}\n\n"
+            . "Fecha y hora: {$payload['submitted_at']}";
         $headers = array('Reply-To: ' . $payload['name'] . ' <' . $payload['email'] . '>');
 
         return wp_mail($recipient, $subject, $body, $headers);
     }
 
     /**
-     * redirect_with_state — Conserva un estado breve y redirige sin exponer sus datos.
+     * configured_recipient - Devuelve el destinatario configurado cuando es válido.
      *
-     * @param string $return_url URL local validada a la que volver.
-     * @param array  $state Errores, valores o estado de éxito que deben consumirse una vez.
-     * @return void Finaliza la petición tras `wp_safe_redirect()`.
-     * @throws Exception Si no puede generarse el token aleatorio.
+     * @return string Email sanitizado o cadena vacía.
      */
-    private function redirect_with_state(string $return_url, array $state): void
+    private function configured_recipient(): string
     {
-        $token = bin2hex(random_bytes(16));
-        set_transient('fpw_contact_state_' . $token, $state, 10 * MINUTE_IN_SECONDS);
-        wp_safe_redirect(add_query_arg(self::STATE_QUERY, $token, $return_url) . '#codepty-contact-1');
-        exit;
+        $recipient = sanitize_email((string) apply_filters('formularios_pw_contact_email', CODEPTY_CONTACT_EMAIL));
+
+        return is_email($recipient) ? $recipient : '';
     }
 
     /**
-     * consume_state — Recupera y elimina el estado efímero señalado por la URL.
+     * render_configuration_notice - Avisa a administradores si falta el destinatario.
      *
-     * @return array Estado consumido una sola vez o un array vacío.
+     * @return void
      */
-    private function consume_state(): array
+    public function render_configuration_notice(): void
     {
-        $token = isset($_GET[self::STATE_QUERY]) ? sanitize_text_field((string) wp_unslash($_GET[self::STATE_QUERY])) : '';
-        if (!preg_match('/^[a-f0-9]{32}$/', $token)) {
-            return array();
+        if ($this->configured_recipient() || !current_user_can('manage_options')) {
+            return;
         }
-
-        $key = 'fpw_contact_state_' . $token;
-        $state = get_transient($key);
-        delete_transient($key);
-
-        return is_array($state) ? $state : array();
+        echo '<div class="notice notice-error"><p>'
+            . esc_html__('Formularios CodePTY: define un email válido en CODEPTY_CONTACT_EMAIL para habilitar el formulario de contacto.', 'formularios-pw')
+            . '</p></div>';
     }
 }

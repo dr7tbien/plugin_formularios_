@@ -5,19 +5,19 @@ if (!defined('ABSPATH')) {
 }
 
 /**
- * Formularios_PW_Plugin — Coordina el arranque de componentes administrativos, públicos y de retención.
+ * Formularios_PW_Plugin - Coordina el formulario público enviado exclusivamente por email.
  */
 final class Formularios_PW_Plugin
 {
     /**
-     * $instance — Mantiene la instancia singleton del coordinador.
+     * $instance - Mantiene la instancia singleton del coordinador.
      *
      * @var self|null
      */
     private static $instance;
 
     /**
-     * instance — Devuelve la instancia única del coordinador del plugin.
+     * instance - Devuelve la instancia única del coordinador del plugin.
      */
     public static function instance(): self
     {
@@ -29,24 +29,18 @@ final class Formularios_PW_Plugin
     }
 
     /**
-     * __construct — Impide instancias externas del coordinador principal.
+     * __construct - Impide instancias externas del coordinador principal.
      */
     private function __construct()
     {
     }
 
     /**
-     * run — Registra los servicios del plugin para panel interno, formulario público y limpieza programada.
+     * run - Registra el formulario público y el actualizador desde GitHub.
      */
     public function run(): void
     {
-        Formularios_PW_Retention::register();
-        (new Formularios_PW_Public_Form())->register();
         (new Formularios_PW_Contact_Form())->register();
-
-        if (is_admin()) {
-            (new Formularios_PW_Admin())->register();
-            (new Formularios_PW_Contact_Admin())->register();
-        }
+        (new Formularios_PW_Updater())->register();
     }
 }

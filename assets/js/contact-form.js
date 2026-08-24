@@ -2,17 +2,10 @@
     'use strict';
 
     document.querySelectorAll('.codepty-contact__form').forEach(function (form) {
-        var contact = form.closest('.codepty-contact');
         var initialView = form.querySelector('.codepty-contact__initial');
         var verificationView = form.querySelector('.codepty-contact__verification');
         var successView = form.querySelector('.codepty-contact__success');
         var startButton = form.querySelector('.codepty-contact__start');
-        var startLabel = form.querySelector('.codepty-contact__start-label');
-        var emailIcon = form.querySelector('.codepty-contact__start-icon--email');
-        var whatsappIcon = form.querySelector('.codepty-contact__start-icon--whatsapp');
-        var channelSwitch = form.querySelector('.codepty-contact__channel-switch');
-        var emailPrivacy = form.querySelector('.codepty-contact__privacy-email');
-        var whatsappPrivacy = form.querySelector('.codepty-contact__privacy-whatsapp');
         var confirmButton = form.querySelector('.codepty-contact__confirm');
         var changeEmailButton = form.querySelector('.codepty-contact__change-email');
         var resendButton = form.querySelector('.codepty-contact__resend');
@@ -24,36 +17,16 @@
         var resendHelp = form.querySelector('.codepty-contact__resend-help');
         var codeInputs = Array.prototype.slice.call(form.querySelectorAll('.codepty-contact__code'));
         var email = form.querySelector('input[name="email"]');
-        var phone = form.querySelector('input[name="phone"]');
-        var name = form.querySelector('input[name="name"]');
-        var message = form.querySelector('textarea[name="message"]');
         var submissionId = form.querySelector('input[name="submission_id"]');
         var originUrl = form.querySelector('input[name="origin_url"]');
         var authorizedAction = '';
-        var smartphone = isSmartphone();
-        var channel = smartphone ? 'whatsapp' : 'email';
 
         if (originUrl) {
             originUrl.value = window.location.href;
         }
 
         /**
-         * isSmartphone — Detecta teléfonos mediante Client Hints y agentes móviles conocidos.
-         *
-         * Las tabletas y los dispositivos no reconocidos permanecen en el flujo seguro de email.
-         *
-         * @return {boolean} Indica si debe recomendarse WhatsApp como canal inicial.
-         */
-        function isSmartphone() {
-            if (navigator.userAgentData && navigator.userAgentData.mobile === true) {
-                return true;
-            }
-
-            return /Android.+Mobile|iPhone|iPod|Windows Phone|IEMobile|Opera Mini|webOS|BlackBerry/i.test(navigator.userAgent || '');
-        }
-
-        /**
-         * setBusy — Sincroniza el estado ocupado, el texto y la accesibilidad de un botón.
+         * setBusy - Sincroniza el estado ocupado, el texto y la accesibilidad de un botón.
          *
          * @param {HTMLButtonElement} button Botón cuyo estado debe actualizarse.
          * @param {boolean} busy Indica si la operación sigue en curso.
@@ -76,37 +49,7 @@
         }
 
         /**
-         * setChannel — Cambia entre WhatsApp y email sin perder los valores escritos.
-         *
-         * Ajusta campos obligatorios, textos, privacidad e identidad visual. WhatsApp solo
-         * puede activarse cuando el navegador se ha clasificado como smartphone.
-         *
-         * @param {string} nextChannel Canal solicitado: `whatsapp` o `email`.
-         * @return {void}
-         */
-        function setChannel(nextChannel) {
-            channel = smartphone && nextChannel === 'whatsapp' ? 'whatsapp' : 'email';
-            var whatsapp = channel === 'whatsapp';
-
-            contact.classList.toggle('is-smartphone', smartphone);
-            contact.classList.toggle('is-whatsapp-mode', whatsapp);
-            contact.classList.toggle('is-email-mode', !whatsapp);
-            email.required = !whatsapp;
-            phone.required = !whatsapp;
-            email.placeholder = whatsapp ? 'Email (opcional)' : 'Email';
-            phone.placeholder = whatsapp ? 'Teléfono (opcional)' : 'Teléfono';
-            startLabel.textContent = whatsapp ? 'Continuar por WhatsApp' : 'Enviar consulta por email';
-            emailIcon.hidden = whatsapp;
-            whatsappIcon.hidden = !whatsapp;
-            emailPrivacy.hidden = whatsapp;
-            whatsappPrivacy.hidden = !whatsapp;
-            channelSwitch.hidden = !smartphone;
-            channelSwitch.textContent = whatsapp ? 'Prefiero enviar por email' : 'Prefiero continuar por WhatsApp';
-            setInitialError('');
-        }
-
-        /**
-         * setInitialError — Muestra un error asociado al formulario inicial.
+         * setInitialError - Muestra un error asociado al formulario inicial.
          *
          * @param {string} message Mensaje que debe anunciarse al visitante.
          * @return {void}
@@ -116,7 +59,7 @@
         }
 
         /**
-         * setVerificationStatus — Actualiza el aviso y el aspecto de las casillas de clave.
+         * setVerificationStatus - Actualiza el aviso y el aspecto de las casillas de clave.
          *
          * @param {string} message Texto del estado de verificación.
          * @param {string} type Tipo visual: `error`, `success` o vacío.
@@ -152,7 +95,7 @@
         }
 
         /**
-         * request — Ejecuta una operación AJAX y normaliza las respuestas de WordPress.
+         * request - Ejecuta una operación AJAX y normaliza las respuestas de WordPress.
          *
          * @param {string} action Acción AJAX solicitada.
          * @param {Object<string, string>} [extra] Campos específicos de la operación.
@@ -184,7 +127,7 @@
         }
 
         /**
-         * clearCode — Vacía y rehabilita las cuatro casillas de verificación.
+         * clearCode - Vacía y rehabilita las cuatro casillas de verificación.
          *
          * @return {void}
          */
@@ -197,7 +140,7 @@
         }
 
         /**
-         * showVerification — Sustituye el formulario inicial por la pantalla de la clave.
+         * showVerification - Sustituye el formulario inicial por la pantalla de la clave.
          *
          * Mantiene los datos escritos en el DOM mientras el visitante confirma su email.
          *
@@ -216,7 +159,7 @@
         }
 
         /**
-         * showSuccess — Presenta la confirmación tras el procesamiento real del servidor.
+         * showSuccess - Presenta la confirmación tras el procesamiento real del servidor.
          *
          * @param {Object} data Datos devueltos por el endpoint final.
          * @return {void}
@@ -229,13 +172,12 @@
         }
 
         /**
-         * sendCode — Solicita por email una clave temporal para esta consulta.
+         * sendCode - Solicita por email una clave temporal para esta consulta.
          *
          * @return {Promise<void>} Operación que termina al mostrar verificación o error.
          */
         function sendCode() {
             setBusy(startButton, true, 'Enviando clave…', 'Enviar consulta por email');
-            channelSwitch.disabled = true;
             setInitialError('');
             return request(formulariosPWContact.sendCodeAction).then(function (data) {
                 showVerification();
@@ -243,42 +185,14 @@
                 setInitialError(error.message);
             }).finally(function () {
                 setBusy(startButton, false, 'Enviando clave…', 'Enviar consulta por email');
-                channelSwitch.disabled = false;
             });
-        }
-
-        /**
-         * continueToWhatsApp — Abre WhatsApp con un mensaje preparado sin registrar la consulta.
-         *
-         * El visitante todavía debe confirmar el envío dentro de WhatsApp; la página original
-         * permanece abierta para conservar los campos si regresa.
-         *
-         * @return {void}
-         */
-        function continueToWhatsApp() {
-            var preparedMessage = 'Hola, soy ' + name.value.trim() + '.\n\n' +
-                'Quiero solicitar información sobre sus servicios.\n\n' +
-                'Mi consulta: ' + message.value.trim();
-            var link = document.createElement('a');
-            link.href = formulariosPWContact.whatsappUrl + '?text=' + encodeURIComponent(preparedMessage);
-            link.target = '_blank';
-            link.rel = 'noopener noreferrer';
-            link.click();
         }
 
         startButton.addEventListener('click', function () {
             if (!form.reportValidity()) {
                 return;
             }
-            if (channel === 'whatsapp') {
-                continueToWhatsApp();
-                return;
-            }
             sendCode();
-        });
-
-        channelSwitch.addEventListener('click', function () {
-            setChannel(channel === 'whatsapp' ? 'email' : 'whatsapp');
         });
 
         codeInputs.forEach(function (input, index) {
@@ -332,7 +246,7 @@
         });
 
         /**
-         * submitAuthorized — Envía la consulta después de que el servidor autorizó el email.
+         * submitAuthorized - Envía la consulta después de que el servidor autorizó el email.
          *
          * @return {Promise<void>} Operación que muestra éxito o permite reintentar el envío.
          */
@@ -434,16 +348,12 @@
         });
 
         restartButton.addEventListener('click', function () {
-            var url = new URL(window.location.href);
-            url.searchParams.delete('codepty_contact_state');
-            url.hash = 'codepty-contact-1';
-            window.location.href = url.toString();
+            window.location.reload();
         });
 
         form.addEventListener('submit', function (event) {
             event.preventDefault();
         });
 
-        setChannel(channel);
     });
 }());

@@ -24,45 +24,6 @@
     display: none !important;
 }
 
-.codepty-contact__whatsapp {
-    margin-bottom: 14px;
-    padding: 16px;
-    display: none;
-    gap: 14px;
-    align-items: center;
-    border: 1px solid rgba(17, 184, 90, 0.28);
-    border-radius: 20px;
-    background: linear-gradient(135deg, #eafff2 0%, #fff 100%);
-}
-
-.codepty-contact__whatsapp-icon {
-    width: 34px;
-    height: 34px;
-    flex: 0 0 34px;
-    display: block;
-    color: #25d366;
-}
-
-.codepty-contact__whatsapp-icon svg {
-    display: block;
-    width: 100%;
-    height: 100%;
-}
-
-.codepty-contact__whatsapp-number {
-    color: #1261a6;
-    font-size: clamp(1.05rem, 4.5vw, 1.35rem);
-    font-weight: 900;
-    line-height: 1.2;
-    text-decoration: none;
-}
-
-.codepty-contact__whatsapp-number:hover,
-.codepty-contact__whatsapp-number:focus-visible {
-    color: #0b477d;
-    text-decoration: underline;
-}
-
 .codepty-contact__title {
     margin: 0 0 12px;
     color: #0057b8;
@@ -130,13 +91,6 @@
     color: #5a6678;
     font-size: var(--codepty-form-body);
     line-height: 1.5;
-}
-
-.codepty-contact.is-whatsapp-mode .codepty-contact__privacy {
-    padding: 12px 14px;
-    border-radius: 11px;
-    background: #eef6ff;
-    color: #263650;
 }
 
 .codepty-contact__verification {
@@ -308,40 +262,6 @@
     flex: 0 0 25px;
 }
 
-.codepty-contact.is-whatsapp-mode .codepty-contact__start {
-    background: #08b92f;
-    box-shadow: 0 12px 26px rgba(8, 185, 47, 0.24);
-}
-
-.codepty-contact.is-whatsapp-mode .codepty-contact__start:hover,
-.codepty-contact.is-whatsapp-mode .codepty-contact__start:focus-visible {
-    background: #079b29;
-}
-
-.codepty-contact__channel-switch {
-    align-self: center;
-    margin: 12px auto 0;
-    padding: 4px;
-    border: 0;
-    background: transparent;
-    color: #1261a6;
-    font: inherit;
-    font-weight: 700;
-    text-decoration: underline;
-    text-underline-offset: 3px;
-    cursor: pointer;
-}
-
-.codepty-contact__channel-switch:hover,
-.codepty-contact__channel-switch:focus-visible {
-    color: #083f72;
-}
-
-.codepty-contact__channel-switch:disabled {
-    cursor: wait;
-    opacity: 0.6;
-}
-
 .codepty-contact__start.is-loading .codepty-contact__start-icon {
     display: none;
 }
@@ -429,10 +349,6 @@
     box-shadow: none;
 }
 
-.contact > .codepty-contact .codepty-contact__whatsapp {
-    min-height: 66px;
-}
-
 .contact > .codepty-contact .codepty-contact__title {
     margin-top: 2px;
 }
@@ -472,10 +388,6 @@
         flex: 1;
         flex-direction: column;
     }
-}
-
-.codepty-contact.is-smartphone.is-whatsapp-mode .codepty-contact__whatsapp {
-    display: flex;
 }
 
 @media (max-width: 600px) {

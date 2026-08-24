@@ -1,6 +1,6 @@
 <?php
 /**
- * uninstall.php — Limpia tareas programadas al desinstalar el plugin sin borrar expedientes automáticamente.
+ * uninstall.php - Retira el cron heredado sin borrar datos históricos.
  */
 
 if (!defined('WP_UNINSTALL_PLUGIN')) {
@@ -8,7 +8,7 @@ if (!defined('WP_UNINSTALL_PLUGIN')) {
 }
 
 /**
- * formularios_pw_uninstall_cleanup — Elimina cron de retención para evitar ejecuciones huérfanas.
+ * formularios_pw_uninstall_cleanup - Elimina cron de retención para evitar ejecuciones huérfanas.
  */
 function formularios_pw_uninstall_cleanup(): void
 {

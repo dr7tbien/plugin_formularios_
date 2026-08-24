@@ -1,105 +1,142 @@
-# Formularios Presencia Web CodePTY
+# Formularios CodePTY
 
-Plugin independiente para gestionar expedientes de clientes de Presencia Web con:
-
-- ficha interna sin crear usuarios WordPress para clientes
-- formulario externo por enlace secreto revocable
-- formulario interno de entrevista (11 apartados)
-- almacenamiento cifrado por expediente en archivos `.pty`
-- índice mínimo en base de datos y auditoría de acciones relevantes
-- formulario reutilizable de consultas generales mediante `[codepty_formulario_contacto]`
+Plugin dedicado exclusivamente a enviar por email el formulario de contacto publicado con
+el shortcode `[codepty_formulario_contacto]`.
 
 ## Formulario de contacto general
 
-El shortcode `[codepty_formulario_contacto]` guarda cada consulta cifrada. En móviles abre
-WhatsApp con el mensaje preparado y en otros dispositivos envía un correo. Las consultas
-pueden revisarse en **Presencia Web > Consultas generales** por usuarios con la capacidad
-`manage_codepty_presencia`.
+El shortcode `[codepty_formulario_contacto]` envía cada consulta directamente mediante
+`wp_mail()` al destinatario definido en `CODEPTY_CONTACT_EMAIL`. DR Sendmail gestiona el
+transporte SMTP de forma independiente.
+
+WordPress no guarda el contenido de la consulta en base de datos, transients, sesiones ni
+archivos. Los datos escritos permanecen en el navegador mientras el visitante completa la
+verificación y el envío.
 
 El formulario incluye verificación del email mediante una clave temporal de cuatro
 caracteres, nonce de WordPress, campo honeypot, comprobación firmada del tiempo de llenado
 y límites por IP y email. La consulta solamente puede enviarse después de validar la clave.
 
-El visitante completa primero su consulta y pulsa **Enviar mensaje**. El formulario se
+El visitante completa primero su consulta y pulsa **Enviar consulta por email**. El formulario se
 sustituye entonces por cuatro casillas para la clave recibida. Al pulsar **Confirmar y
-enviar mensaje**, el servidor valida la clave y procesa la consulta en una única acción
-visible. Los datos se conservan si hay que corregir, reenviar la clave o cambiar el email.
-
-En smartphones, el formulario recomienda WhatsApp y abre la aplicación con un mensaje
-preparado sin solicitar verificación ni registrar la consulta como recibida. El visitante
-puede cambiar a email sin perder sus datos; ese recorrido sí exige la clave temporal. En
-ordenadores y tabletas solo se ofrece el formulario verificado por email.
+enviar mensaje**, el servidor valida la clave y envía la consulta. El servidor conserva
+temporalmente solo hashes, caducidad, intentos y contadores necesarios para la verificación
+y protección contra abuso; nunca conserva el contenido del mensaje.
 
 ### Página de origen
 
-Cada consulta enviada por email conserva la **Página de origen**, es decir, la página
+Cada correo incluye la **Página de origen**, es decir, la página
 interna de CodePTY que contenía el shortcode cuando el visitante inició el envío. El
 navegador coloca `window.location.href` en un campo oculto y lo incluye en las peticiones
 del formulario; así la captura no depende de `HTTP_REFERER`, que puede perderse en AJAX.
 
 El servidor no confía directamente en ese campo: admite únicamente URLs HTTP o HTTPS cuyo
-host y puerto coincidan con WordPress, elimina parámetros de consulta y fragmentos, y
-almacena solo esquema, host, puerto cuando existe y ruta. En **Presencia Web > Consultas
-generales**, una página válida aparece con título o ruta y como enlace seguro en una pestaña
-nueva. Si el valor está vacío, malformado, pertenece a otro dominio o un registro antiguo no
-contiene un origen interno válido, se muestra **No identificado**.
+host y puerto coincidan con WordPress y elimina parámetros de consulta y fragmentos. Si el
+valor está vacío, malformado o pertenece a otro dominio, el correo indica **No identificado**.
 
-### Eliminación de consultas
+El correo final contiene nombre, teléfono, email, mensaje, página de origen y fecha/hora.
+No genera identificadores adicionales.
 
-El detalle administrativo muestra el UID técnico de la consulta y un botón **Eliminar
-consulta**. La acción requiere la capacidad privada del plugin, petición POST, nonce y una
-confirmación explícita. El borrado es definitivo y elimina conjuntamente el payload
-cifrado, la fila del índice y la auditoría asociada; no afecta a expedientes de clientes.
+### Configuración del destinatario
 
-WP-CLI permite localizar y eliminar consultas concretas por sus UID:
+El destinatario se define antes de cargar el plugin:
+
+```php
+define('CODEPTY_CONTACT_EMAIL', 'codepty0@gmail.com');
+```
+
+Si la constante falta o no contiene un email válido, el formulario no intenta enviar y
+muestra un error genérico al visitante. Los administradores reciben un aviso claro en el
+panel de WordPress.
+
+DR Sendmail es responsable del transporte SMTP. `formularios_` no contiene credenciales
+SMTP ni configura el servidor de correo.
+
+### Botones de teléfono y WhatsApp
+
+El plugin actual no genera botones de teléfono o WhatsApp ni cambia el canal según el
+dispositivo: el formulario siempre utiliza email. Las constantes antiguas relacionadas con
+esos botones no son leídas por `formularios_`.
+
+## Actualizaciones desde GitHub
+
+El plugin consulta la última release pública estable de:
+
+```text
+https://github.com/dr7tbien/plugin_formularios_
+```
+
+WordPress compara la etiqueta normalizada de la release con la versión instalada mediante
+`version_compare()`. Solo muestra una actualización cuando la versión remota es superior.
+Las respuestas se guardan temporalmente durante seis horas; los errores se recuerdan durante
+treinta minutos para no insistir contra GitHub. La caché se elimina al terminar una
+actualización del plugin.
+
+Se ignoran drafts, prereleases, etiquetas distintas de `vX.Y.Z`/`X.Y.Z`, releases sin el
+asset exacto `formularios_.zip` y enlaces que no pertenezcan a la ruta de releases de este
+repositorio en `github.com`. Si GitHub no responde, el formulario sigue funcionando.
+
+La instalación que actualmente funciona en `codepty.com` debe actualizarse manualmente una
+última vez con una versión que ya incluya este actualizador. Las releases posteriores podrán
+instalarse desde **Plugins > Actualizaciones**.
+
+## Publicación manual de una versión
+
+1. Cambiar manualmente `Version: X.Y.Z` y `FORMULARIOS_PW_VERSION` en `formularios_.php`.
+2. Actualizar `README.md`, `CHANGELOG.md` y el bloque DR Readme.
+3. Generar el paquete desde el directorio del plugin:
+
+   ```bash
+   ./scripts/build-release.sh /tmp/formularios_.zip
+   ```
+
+4. Comprobar que todas las rutas del ZIP comienzan por `formularios_/` y que existe
+   `formularios_/formularios_.php`. El script realiza esta comprobación automáticamente.
+5. Revisar el contenido y realizar manualmente el commit y push autorizados.
+6. Crear manualmente el tag `vX.Y.Z` y una release pública no marcada como prerelease.
+7. Adjuntar a la release el archivo exacto `formularios_.zip`.
+8. Desde WordPress, forzar una comprobación y verificar **Actualizar ahora**.
+
+El script solo crea un ZIP local. No cambia versiones, no ejecuta Git y no publica nada.
+Excluye `.git`, pruebas y scripts; además bloquea nombres de archivos privados y patrones
+habituales de claves antes de empaquetar.
+
+## Pruebas y diagnóstico
+
+Ejecutar las pruebas aisladas del actualizador:
 
 ```bash
-wp formularios consultas listar
-wp formularios consultas ver a83f0123456789abcdef0123
-wp formularios consultas eliminar a83f0123456789abcdef0123 --dry-run
-wp formularios consultas eliminar a83f0123456789abcdef0123 --yes
+php tests/run.php
 ```
 
-`listar` acepta `--limit=<número>` entre 1 y 200. `eliminar` admite varios UID en una sola
-orden, informa por separado de consultas encontradas, ausentes e identificadores inválidos,
-y exige `--yes` para modificar datos. Se recomienda ejecutar siempre primero `--dry-run`.
+Estas cubren ausencia de releases, versiones igual/inferior/superior, drafts, prereleases,
+errores remotos, URL de descarga no autorizada, caché y limpieza tras actualizar.
 
-Los destinos provisionales se definen globalmente y pueden reemplazarse en `wp-config.php`
-antes de cargar el plugin:
+Si WordPress no muestra una actualización, comprobar:
 
-```php
-define('CODEPTY_CONTACT_WHATSAPP', '+507 6123-4567');
-define('CODEPTY_CONTACT_EMAIL', 'consultas@example.com');
-```
+- que la release sea pública y estable;
+- que la etiqueta sea exactamente `vX.Y.Z` y superior a la versión instalada;
+- que exista el asset `formularios_.zip`;
+- que el ZIP tenga una única carpeta raíz llamada `formularios_`;
+- que WordPress pueda realizar solicitudes HTTPS a `api.github.com` y `github.com`;
+- que hayan transcurrido seis horas o se haya limpiado el transient
+  `formularios_pw_github_release` antes de repetir la consulta.
 
-## Requisitos de despliegue seguro
+Una respuesta 404 significa normalmente que aún no existe una release pública. Los errores
+o timeouts de GitHub no se muestran al visitante y no impiden enviar formularios.
 
-1. Definir directorio privado fuera de raíz web (opcional si el fallback ya queda fuera):
+## Datos históricos
 
-```php
-define('CODEPTY_PW_STORAGE_DIR', '/ruta/privada/codepty-presencia-web');
-```
+Versiones anteriores gestionaban expedientes, adjuntos y consultas almacenadas. El código
+de esas funciones ya no forma parte del plugin. La actualización no elimina automáticamente:
 
-2. Definir clave maestra fuera del plugin/WordPress/Git:
+- tablas o filas históricas de WordPress
+- archivos de `app/private/codepty-presencia-web`
+- la clave maestra anterior
 
-```php
-define('CODEPTY_PW_MASTER_KEY_FILE', '/ruta/segura/master.key');
-```
-
-La clave debe ser de 32 bytes en binario o base64/base64-url.
-
-## Política de retención (preparada)
-
-La purga automática está desactivada por defecto. Para habilitarla:
-
-```php
-add_filter('formularios_pw_retention_enabled', '__return_true');
-add_filter('formularios_pw_retention_days', fn() => 365);
-```
-
-Las consultas generales usan el mismo plazo, modificable con el filtro
-`formularios_pw_contact_retention_days`. La purga permanece desactivada mientras no se
-habilite explícitamente la retención general.
+Estos elementos pueden revisarse y limpiarse posteriormente mediante una operación de
+mantenimiento expresamente autorizada. El plugin actual no los lee ni escribe y ya no
+depende de `CODEPTY_PW_STORAGE_DIR` ni de `CODEPTY_PW_MASTER_KEY_FILE`.
 
 ## Comando dr-readme
 
@@ -113,12 +150,8 @@ wp dr-readme update --target="$(pwd)" --block=TREE
 ├── assets
 │   └── js
 │       └── contact-form.js
-│           + isSmartphone()
-│           │   # Detecta teléfonos mediante Client Hints y agentes móviles conocidos.
 │           + setBusy()
 │           │   # Sincroniza el estado ocupado, el texto y la accesibilidad de un botón.
-│           + setChannel()
-│           │   # Cambia entre WhatsApp y email sin perder los valores escritos.
 │           + setInitialError()
 │           │   # Muestra un error asociado al formulario inicial.
 │           + setVerificationStatus()
@@ -135,131 +168,12 @@ wp dr-readme update --target="$(pwd)" --block=TREE
 │           │   # Presenta la confirmación tras el procesamiento real del servidor.
 │           + sendCode()
 │           │   # Solicita por email una clave temporal para esta consulta.
-│           + continueToWhatsApp()
-│           │   # Abre WhatsApp con un mensaje preparado sin registrar la consulta.
 │           + submitAuthorized()
 │           │   # Envía la consulta después de que el servidor autorizó el email.
 ├── formularios_.php
 │   + autoload_formularios_pw_files()
 │   │   # Carga manualmente las clases base del plugin.
 ├── includes
-│   ├── class-formularios-pw-activator.php
-│   │   + Formularios_PW_Activator()
-│   │   │   # Ejecuta tareas de instalación, actualización y apagado del plugin.
-│   │   + activate()
-│   │   │   # Crea tablas, prepara permisos, rutas de reescritura y cron del plugin.
-│   │   + deactivate()
-│   │   │   # Limpia hooks temporales sin eliminar datos de expedientes.
-│   ├── class-formularios-pw-admin.php
-│   │   + Formularios_PW_Admin()
-│   │   │   # Gestiona panel interno, expedientes, tokens y formulario de entrevista.
-│   │   + register()
-│   │   │   # Conecta menús, acciones POST internas y estilos administrativos.
-│   │   + register_menu()
-│   │   │   # Registra la entrada de menú del módulo de expedientes.
-│   │   + enqueue_assets()
-│   │   │   # Carga estilos para hacer legible el panel administrativo del plugin.
-│   │   + render_page()
-│   │   │   # Muestra listado de expedientes o detalle según parámetros de consulta.
-│   │   + handle_create_case()
-│   │   │   # Procesa alta de expediente, genera enlace secreto y estado enviado.
-│   │   + handle_save_internal()
-│   │   │   # Guarda formulario interno de entrevista y metadatos operativos.
-│   │   + handle_change_status()
-│   │   │   # Cambia estado desde acción rápida del listado administrativo.
-│   │   + handle_regenerate_token()
-│   │   │   # Revoca tokens activos y crea un nuevo enlace secreto.
-│   │   + handle_revoke_token()
-│   │   │   # Revoca un token concreto por hash sin exponer su valor original.
-│   │   + render_header()
-│   │   │   # Abre contenedor y título principal del área del plugin.
-│   │   + render_footer()
-│   │   │   # Cierra contenedor principal de la interfaz administrativa.
-│   │   + render_create_form()
-│   │   │   # Dibuja formulario rápido para crear ficha y enlace secreto.
-│   │   + render_list()
-│   │   │   # Muestra tabla resumida con cliente, estado, responsable y fechas.
-│   │   + render_detail()
-│   │   │   # Muestra vista completa de un expediente con formularios y acciones.
-│   │   + render_owner_select()
-│   │   │   # Construye selector de usuario responsable para el expediente.
-│   │   + render_status_select()
-│   │   │   # Construye selector para transición manual de estado.
-│   │   + render_key_value()
-│   │   │   # Imprime fila simple de etiqueta y contenido textual escapado.
-│   │   + render_attachments()
-│   │   │   # Muestra metadatos de adjuntos externos sin exponer archivos directamente.
-│   │   + recent_audit()
-│   │   │   # Devuelve últimos eventos de auditoría del expediente actual.
-│   │   + status_labels()
-│   │   │   # Define etiquetas legibles de los estados operativos del expediente.
-│   │   + status_label()
-│   │   │   # Obtiene etiqueta legible para un valor de estado concreto.
-│   │   + textarea_row()
-│   │   │   # Genera una fila de tabla con textarea para formularios internos extensos.
-│   │   + guard_admin_post()
-│   │   │   # Verifica permisos y nonce antes de procesar acciones internas.
-│   │   + redirect_admin()
-│   │   │   # Redirige al panel del plugin con argumentos de resultado.
-│   │   + token_notice_key()
-│   │   │   # Calcula clave transient por usuario para mostrar token recién generado.
-│   │   + render_token_notice_if_any()
-│   │   │   # Muestra token/plink generado y lo elimina del almacenamiento temporal.
-│   ├── class-formularios-pw-audit.php
-│   │   + Formularios_PW_Audit()
-│   │   │   # Registra eventos relevantes para trazabilidad de expedientes.
-│   │   + log()
-│   │   │   # Inserta un evento de auditoría con actor, tipo y metadatos mínimos.
-│   │   + normalize_meta()
-│   │   │   # Reduce metadatos a tipos seguros para almacenamiento en auditoría.
-│   ├── class-formularios-pw-contact-admin.php
-│   │   + Formularios_PW_Contact_Admin()
-│   │   │   # Presenta consultas cifradas al equipo autorizado.
-│   │   + register()
-│   │   │   # Registra menú, recursos y eliminación de la pantalla privada de consultas.
-│   │   + register_menu()
-│   │   │   # Añade Consultas generales como subpágina de Presencia Web.
-│   │   + enqueue_assets()
-│   │   │   # Carga estilos solo dentro de la pantalla de consultas.
-│   │   + render()
-│   │   │   # Comprueba permisos y muestra listado, detalle o resultado de eliminación.
-│   │   + render_list()
-│   │   │   # Dibuja la tabla y descifra únicamente el origen de cada consulta reciente.
-│   │   + render_detail()
-│   │   │   # Descifra y presenta una consulta seleccionada con su página de origen.
-│   │   + handle_delete()
-│   │   │   # Valida y ejecuta el borrado individual de una consulta desde administración.
-│   │   + field()
-│   │   │   # Imprime un campo de detalle escapando contenido y saltos de línea.
-│   │   + render_delete_form()
-│   │   │   # Muestra la acción destructiva protegida para una consulta concreta.
-│   │   + render_delete_notice()
-│   │   │   # Presenta el resultado de un intento de eliminación sin revelar datos.
-│   │   + redirect_after_delete()
-│   │   │   # Regresa al listado después de una eliminación administrativa.
-│   │   + get_origin_presentation()
-│   │   │   # Obtiene una página interna legible desde el payload o un registro antiguo.
-│   │   + normalize_internal_origin_url()
-│   │   │   # Valida una URL almacenada y elimina consulta y fragmento.
-│   │   + origin_html()
-│   │   │   # Genera la celda enlazada de una página de origen válida.
-│   │   + origin_detail_html()
-│   │   │   # Genera el campo de origen del detalle con enlace seguro cuando procede.
-│   ├── class-formularios-pw-contact-cli.php
-│   │   + Formularios_PW_Contact_CLI()
-│   │   │   # Gestiona consultas generales concretas mediante WP-CLI.
-│   │   + listar()
-│   │   │   # Muestra UID y metadatos operativos de las consultas recientes.
-│   │   + ver()
-│   │   │   # Descifra y muestra una consulta identificada por UID.
-│   │   + eliminar()
-│   │   │   # Elimina por UID una o varias consultas generales de forma explícita.
-│   │   + required_uid()
-│   │   │   # Valida el UID obligatorio de un comando individual.
-│   │   + origin_label()
-│   │   │   # Obtiene una ruta interna segura para la salida de WP-CLI.
-│   │   + terminal_text()
-│   │   │   # Elimina controles que podrían alterar la salida de una terminal.
 │   ├── class-formularios-pw-contact-form.php
 │   │   + Formularios_PW_Contact_Form()
 │   │   │   # Coordina renderizado, verificación y envío del contacto público.
@@ -272,7 +186,7 @@ wp dr-readme update --target="$(pwd)" --block=TREE
 │   │   + input()
 │   │   │   # Imprime un campo de texto común preservando valores devueltos tras un error.
 │   │   + handle_submit()
-│   │   │   # Valida, almacena cifrada y entrega por email una consulta autorizada.
+│   │   │   # Valida y entrega por email una consulta autorizada sin almacenarla.
 │   │   + handle_send_code()
 │   │   │   # Genera y envía al visitante una clave temporal de cuatro caracteres.
 │   │   + handle_invalidate_code()
@@ -284,9 +198,9 @@ wp dr-readme update --target="$(pwd)" --block=TREE
 │   │   + posted_values()
 │   │   │   # Extrae y sanitiza los campos públicos recibidos por POST.
 │   │   + submit_failure()
-│   │   │   # Devuelve un fallo uniforme por AJAX o mediante estado redirigido.
+│   │   │   # Devuelve un fallo JSON uniforme sin conservar los campos recibidos.
 │   │   + submit_success()
-│   │   │   # Devuelve éxito por AJAX o redirige con un estado efímero.
+│   │   │   # Devuelve éxito JSON sin crear estado persistente adicional.
 │   │   + guard_verification_ajax()
 │   │   │   # Rechaza operaciones de clave con nonce ausente o caducado.
 │   │   + posted_submission_id()
@@ -307,122 +221,23 @@ wp dr-readme update --target="$(pwd)" --block=TREE
 │   │   │   # Firma la hora de renderizado para detectar envíos instantáneos.
 │   │   + is_valid_form_started_token()
 │   │   │   # Comprueba firma y antigüedad razonable del formulario.
-│   │   + validated_return_url()
-│   │   │   # Obtiene una URL local limpia para el fallback por redirección.
-│   │   + is_local_url()
-│   │   │   # Comprueba que una URL pertenece al mismo host de WordPress.
 │   │   + resolve_origin()
 │   │   │   # Valida y describe la página interna declarada por el navegador.
 │   │   + normalize_origin_url()
 │   │   │   # Reduce una URL al esquema, host, puerto y ruta del sitio actual.
 │   │   + send_email()
 │   │   │   # Entrega la consulta al destinatario operativo configurado.
-│   │   + redirect_with_state()
-│   │   │   # Conserva un estado breve y redirige sin exponer sus datos.
-│   │   + consume_state()
-│   │   │   # Recupera y elimina el estado efímero señalado por la URL.
-│   ├── class-formularios-pw-contact-repository.php
-│   │   + Formularios_PW_Contact_Repository()
-│   │   │   # Persiste consultas cifradas y su índice operativo mínimo.
-│   │   + create()
-│   │   │   # Cifra una consulta, crea su índice y registra el evento de recepción.
-│   │   + set_delivery_status()
-│   │   │   # Actualiza el resultado de entrega y lo deja en auditoría.
-│   │   + list_recent()
-│   │   │   # Devuelve consultas recientes sin descifrar su contenido.
-│   │   + get()
-│   │   │   # Recupera la fila de índice de una consulta concreta.
-│   │   + delete()
-│   │   │   # Elimina definitivamente una consulta, su payload cifrado y su auditoría.
-│   │   + is_valid_uid()
-│   │   │   # Comprueba el formato no ambiguo de un identificador de consulta.
-│   │   + purge_before()
-│   │   │   # Elimina consultas, payloads cifrados y auditoría anteriores al umbral.
-│   ├── class-formularios-pw-crypto.php
-│   │   + Formularios_PW_Crypto()
-│   │   │   # Cifra y descifra cargas JSON con Sodium XChaCha20-Poly1305.
-│   │   + encrypt_json()
-│   │   │   # Cifra un array y devuelve un sobre serializable en JSON.
-│   │   + decrypt_json()
-│   │   │   # Descifra un sobre y devuelve el array original del expediente.
-│   │   + master_key()
-│   │   │   # Obtiene la clave maestra desde constantes o variables de entorno externas.
-│   │   + aad()
-│   │   │   # Construye datos autenticados adicionales para vincular el contexto de cifrado.
-│   │   + read_master_key_source()
-│   │   │   # Lee la fuente de clave maestra desde constantes o entorno.
-│   │   + maybe_create_wordpress_managed_key()
-│   │   │   # Crea una clave interna en opciones de WordPress si no existe otra fuente.
-│   │   + wordpress_option_name()
-│   │   │   # Devuelve el nombre de opción usada para la clave interna gestionada por WordPress.
-│   │   + decode_key()
-│   │   │   # Interpreta la clave en base64-url, base64 estándar o texto binario literal.
-│   ├── class-formularios-pw-db.php
-│   │   + Formularios_PW_DB()
-│   │   │   # Define y crea las tablas mínimas de índice, tokens y auditoría.
-│   │   + table_cases()
-│   │   │   # Devuelve el nombre completo de la tabla de expedientes.
-│   │   + table_tokens()
-│   │   │   # Devuelve el nombre completo de la tabla de tokens.
-│   │   + table_audit()
-│   │   │   # Devuelve el nombre completo de la tabla de auditoría.
-│   │   + table_payloads()
-│   │   │   # Devuelve el nombre completo de la tabla de payloads cifrados en DB.
-│   │   + table_contacts()
-│   │   │   # Devuelve el nombre completo de la tabla de consultas generales.
-│   │   + create_tables()
-│   │   │   # Crea o actualiza las tablas necesarias del plugin.
-│   │   + ensure_tables()
-│   │   │   # Comprueba el esquema del plugin y lo crea si falta alguna tabla.
-│   │   + schema_is_complete()
-│   │   │   # Verifica si todas las tablas del plugin ya existen.
-│   │   + table_exists()
-│   │   │   # Comprueba si existe una tabla concreta del plugin.
-│   ├── class-formularios-pw-permissions.php
-│   │   + Formularios_PW_Permissions()
-│   │   │   # Gestiona capacidades para administradores y equipo interno.
-│   │   + grant_capability()
-│   │   │   # Asigna la capacidad del plugin a administrator y equipocodepty.
-│   │   + current_user_can_manage()
-│   │   │   # Indica si el usuario actual puede operar el panel interno.
+│   │   + configured_recipient()
+│   │   │   # Devuelve el destinatario configurado cuando es válido.
+│   │   + render_configuration_notice()
+│   │   │   # Avisa a administradores si falta el destinatario.
 │   ├── class-formularios-pw-plugin.php
 │   │   + Formularios_PW_Plugin()
-│   │   │   # Coordina el arranque de componentes administrativos, públicos y de retención.
+│   │   │   # Coordina el formulario público enviado exclusivamente por email.
 │   │   + instance()
 │   │   │   # Devuelve la instancia única del coordinador del plugin.
 │   │   + run()
-│   │   │   # Registra los servicios del plugin para panel interno, formulario público y limpieza programada.
-│   ├── class-formularios-pw-public-form.php
-│   │   + Formularios_PW_Public_Form()
-│   │   │   # Expone el formulario externo por token secreto sin usuarios WordPress.
-│   │   + register()
-│   │   │   # Registra rewrite, query var y resolución de la vista pública.
-│   │   + register_rewrite_rules()
-│   │   │   # Define la ruta pública amigable para token externo.
-│   │   + add_query_var()
-│   │   │   # Declara la query var personalizada para resolver tokens.
-│   │   + maybe_render()
-│   │   │   # Atiende la solicitud del formulario externo si la URL incluye token.
-│   │   + merge_external_form_payload()
-│   │   │   # Sanitiza campos externos y adjuntos antes de persistir expediente.
-│   │   + process_uploaded_files()
-│   │   │   # Recorre archivos del campo materials y almacena adjuntos cifrados.
-│   │   + passes_honeypot()
-│   │   │   # Verifica campo trampa anti-bot para rechazar envíos automatizados.
-│   │   + post_value()
-│   │   │   # Obtiene valor POST des-escapado para una clave dada.
-│   │   + render_error_page()
-│   │   │   # Muestra una salida mínima para token inválido o acceso bloqueado.
-│   │   + render_form_page()
-│   │   │   # Renderiza el formulario externo editable y mensajes de confirmación.
-│   │   + count_post_fields()
-│   │   │   # Cuenta los valores recibidos por POST para depuración.
-│   │   + count_files()
-│   │   │   # Cuenta los bloques de subida recibidos por FILES para depuración.
-│   │   + count_keys()
-│   │   │   # Cuenta claves visibles de arrays y objetos para depuración.
-│   │   + log()
-│   │   │   # Envía una traza al error_log con prefijo estable del plugin.
+│   │   │   # Registra el formulario público y el actualizador desde GitHub.
 │   ├── class-formularios-pw-rate-limit.php
 │   │   + Formularios_PW_Rate_Limit()
 │   │   │   # Aplica límites temporales para reducir abuso automatizado.
@@ -430,95 +245,49 @@ wp dr-readme update --target="$(pwd)" --block=TREE
 │   │   │   # Evalúa si una clave supera el umbral dentro de una ventana temporal.
 │   │   + fingerprint_from_request()
 │   │   │   # Construye huella de cliente a partir de IP y token hash.
-│   ├── class-formularios-pw-repository.php
-│   │   + Formularios_PW_Repository()
-│   │   │   # Centraliza operaciones de índice, tokens, estados y consultas del panel.
-│   │   + create_case()
-│   │   │   # Inserta un expediente nuevo con índice mínimo y estado inicial.
-│   │   + list_cases()
-│   │   │   # Devuelve la lista de expedientes activos ordenados por actualización.
-│   │   + get_case_by_uid()
-│   │   │   # Recupera un expediente por su identificador público interno.
-│   │   + update_owner()
-│   │   │   # Actualiza el responsable interno del expediente.
-│   │   + update_status()
-│   │   │   # Cambia estado de expediente y sincroniza fechas de hito.
-│   │   + create_token()
-│   │   │   # Crea token secreto, almacena solo hash y devuelve token plano una sola vez.
-│   │   + revoke_active_tokens()
-│   │   │   # Revoca todos los tokens vigentes de un expediente.
-│   │   + revoke_token_by_hash()
-│   │   │   # Revoca un token específico usando su hash almacenado.
-│   │   + list_case_tokens()
-│   │   │   # Lista tokens de un expediente para gestión y revocación.
-│   │   + find_case_by_token_plain()
-│   │   │   # Valida un token plano y devuelve expediente junto a registro de token.
-│   │   + mark_token_used()
-│   │   │   # Incrementa uso y última fecha de acceso de un token válido.
-│   │   + get_case_payload()
-│   │   │   # Lee y descifra el contenido del expediente desde almacenamiento privado.
-│   │   + save_case_payload()
-│   │   │   # Cifra y guarda el contenido actualizado del expediente.
-│   │   + hash_token()
-│   │   │   # Convierte un token plano en hash irreversible para persistencia.
-│   │   + random_hex()
-│   │   │   # Genera identificadores hexadecimales aleatorios para índice y archivos.
-│   │   + base64url_random()
-│   │   │   # Genera token URL-safe de longitud alta para acceso externo.
-│   ├── class-formularios-pw-retention.php
-│   │   + Formularios_PW_Retention()
-│   │   │   # Prepara política de conservación y purga programada extensible.
-│   │   + register()
-│   │   │   # Conecta el callback de limpieza al evento cron del plugin.
-│   │   + schedule()
-│   │   │   # Programa la tarea diaria si aún no existe en el calendario de WordPress.
-│   │   + unschedule()
-│   │   │   # Elimina la tarea programada al desactivar el plugin.
-│   │   + run_cleanup()
-│   │   │   # Ejecuta la purga según política configurada sin borrar por defecto.
-│   │   + delete_case_files()
-│   │   │   # Elimina archivos cifrados de expediente y adjuntos durante purga aprobada.
-│   └── class-formularios-pw-storage.php
-│       + Formularios_PW_Storage()
-│       │   # Gestiona lectura y escritura cifrada de expedientes y adjuntos privados.
-│       + allowed_mimes()
-│       │   # Devuelve los MIME permitidos para materiales del cliente.
-│       + storage_dir()
-│       │   # Obtiene el directorio base privado para expedientes.
-│       + use_db_backend()
-│       │   # Determina si el plugin guarda payloads cifrados en base de datos.
-│       + ensure_storage_ready()
-│       │   # Crea estructura privada base cuando aún no existe.
-│       + read_case_payload()
-│       │   # Descifra y devuelve el contenido completo de un expediente.
-│       + write_case_payload()
-│       │   # Cifra y persiste el contenido del expediente de forma atómica.
-│       + write_contact_payload()
-│       │   # Guarda una consulta de contacto cifrada en el almacén privado compartido.
-│       + read_contact_payload()
-│       │   # Recupera y descifra una consulta de contacto.
-│       + delete_contact_payload()
-│       │   # Elimina definitivamente el payload cifrado de una consulta purgada.
-│       + store_uploaded_file()
-│       │   # Valida y cifra un archivo cargado, devolviendo su metadato seguro.
-│       + default_payload()
-│       │   # Construye la estructura inicial de un expediente nuevo.
-│       + detect_mime_type()
-│       │   # Detecta MIME real desde contenido para evitar suplantación de extensiones.
-│       + case_file_path()
-│       │   # Resuelve la ruta física del archivo .pty de un expediente.
-│       + attachment_file_path()
-│       │   # Resuelve la ruta física de un adjunto cifrado del expediente.
-│       + delete_case_artifacts()
-│       │   # Elimina payloads de expediente y adjuntos según backend activo.
-│       + read_case_payload_db()
-│       │   # Recupera y descifra payload de expediente guardado en DB.
-│       + write_case_payload_db()
-│       │   # Cifra y persiste payload de expediente en DB.
-│       + upsert_payload()
-│       │   # Inserta o actualiza un payload cifrado en tabla dedicada.
-│       + get_payload_row()
-│       │   # Busca un payload cifrado por expediente y referencia de objeto.
+│   └── class-formularios-pw-updater.php
+│       + Formularios_PW_Updater()
+│       │   # Integra releases públicas de GitHub con el actualizador de WordPress.
+│       + register()
+│       │   # Conecta comprobación, información y limpieza de caché con WordPress.
+│       + filter_update()
+│       │   # Devuelve una actualización solo cuando la release estable es superior.
+│       + filter_plugin_information()
+│       │   # Muestra información básica de la release en WordPress.
+│       + clear_cache_after_upgrade()
+│       │   # Invalida la release guardada después de actualizar el plugin.
+│       + get_release()
+│       │   # Obtiene y almacena temporalmente la última release pública válida.
+│       + normalize_release()
+│       │   # Valida y reduce una respuesta remota a campos confiables.
+│       + is_allowed_package_url()
+│       │   # Limita descargas al ZIP esperado dentro del repositorio.
+│       + is_repository_url()
+│       │   # Comprueba que una URL informativa pertenece al repositorio público.
+│       + cache_failure()
+│       │   # Evita repetir inmediatamente una consulta fallida a GitHub.
+├── tests
+│   └── run.php
+│       + WP_Error()
+│       + add_filter()
+│       + add_action()
+│       + get_site_transient()
+│       + set_site_transient()
+│       + delete_site_transient()
+│       + wp_remote_get()
+│       + is_wp_error()
+│       + wp_remote_retrieve_response_code()
+│       + wp_remote_retrieve_body()
+│       + sanitize_text_field()
+│       + sanitize_textarea_field()
+│       + esc_url_raw()
+│       + wp_parse_url()
+│       + wpautop()
+│       + esc_html()
+│       + test_release()
+│       + test_response()
+│       + reset_test_state()
+│       + expect_true()
 └── uninstall.php
     + formularios_pw_uninstall_cleanup()
     │   # Elimina cron de retención para evitar ejecuciones huérfanas.

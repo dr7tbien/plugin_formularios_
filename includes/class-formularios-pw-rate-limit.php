@@ -5,12 +5,12 @@ if (!defined('ABSPATH')) {
 }
 
 /**
- * Formularios_PW_Rate_Limit — Aplica límites temporales para reducir abuso automatizado.
+ * Formularios_PW_Rate_Limit - Aplica límites temporales para reducir abuso automatizado.
  */
 final class Formularios_PW_Rate_Limit
 {
     /**
-     * allow — Evalúa si una clave supera el umbral dentro de una ventana temporal.
+     * allow - Evalúa si una clave supera el umbral dentro de una ventana temporal.
      */
     public static function allow(string $key, int $max_attempts, int $window_seconds): bool
     {
@@ -28,7 +28,7 @@ final class Formularios_PW_Rate_Limit
     }
 
     /**
-     * fingerprint_from_request — Construye huella de cliente a partir de IP y token hash.
+     * fingerprint_from_request - Construye huella de cliente a partir de IP y token hash.
      */
     public static function fingerprint_from_request(string $token_hash): string
     {
