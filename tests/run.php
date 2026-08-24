@@ -3,7 +3,7 @@
 define('ABSPATH', __DIR__ . '/');
 define('HOUR_IN_SECONDS', 3600);
 define('MINUTE_IN_SECONDS', 60);
-define('FORMULARIOS_PW_VERSION', '0.6.5');
+define('FORMULARIOS_PW_VERSION', '0.6.6');
 define('FORMULARIOS_PW_BASENAME', 'formularios_/formularios_.php');
 
 $test_cache = array();
@@ -147,15 +147,15 @@ require dirname(__DIR__) . '/includes/class-formularios-pw-updater.php';
 
 $updater = new Formularios_PW_Updater();
 
-reset_test_state(test_response(test_release('0.6.5')));
-expect_true($updater->filter_update(false, array('Version' => '0.6.5'), FORMULARIOS_PW_BASENAME, array()) === false, 'Una versión igual no debe actualizar.');
-
-reset_test_state(test_response(test_release('0.6.4')));
-expect_true($updater->filter_update(false, array('Version' => '0.6.5'), FORMULARIOS_PW_BASENAME, array()) === false, 'Una versión inferior no debe actualizar.');
-
 reset_test_state(test_response(test_release('0.6.6')));
-$update = $updater->filter_update(false, array('Version' => '0.6.5'), FORMULARIOS_PW_BASENAME, array());
-expect_true(is_array($update) && $update['new_version'] === '0.6.6', 'Una versión superior debe actualizar.');
+expect_true($updater->filter_update(false, array('Version' => '0.6.6'), FORMULARIOS_PW_BASENAME, array()) === false, 'Una versión igual no debe actualizar.');
+
+reset_test_state(test_response(test_release('0.6.5')));
+expect_true($updater->filter_update(false, array('Version' => '0.6.6'), FORMULARIOS_PW_BASENAME, array()) === false, 'Una versión inferior no debe actualizar.');
+
+reset_test_state(test_response(test_release('0.6.7')));
+$update = $updater->filter_update(false, array('Version' => '0.6.6'), FORMULARIOS_PW_BASENAME, array());
+expect_true(is_array($update) && $update['new_version'] === '0.6.7', 'Una versión superior debe actualizar.');
 expect_true($update['plugin'] === FORMULARIOS_PW_BASENAME, 'La actualización debe apuntar al plugin correcto.');
 
 reset_test_state(test_response(array('message' => 'Not Found'), 404));
@@ -177,11 +177,16 @@ $mismatched_tag = test_release('1.1.0');
 $mismatched_tag['assets'][0]['browser_download_url'] = 'https://github.com/dr7tbien/plugin_formularios_/releases/download/v9.9.9/formularios_.zip';
 expect_true(Formularios_PW_Updater::normalize_release($mismatched_tag) === null, 'El asset debe pertenecer a la etiqueta publicada.');
 
-reset_test_state(test_response(test_release('0.6.6')));
+reset_test_state(test_response(test_release('0.6.7')));
 expect_true($updater->get_release() !== null && $updater->get_release() !== null, 'Una release válida debe poder reutilizarse desde caché.');
 expect_true($test_requests === 1, 'La caché debe evitar consultas repetidas.');
 
 $updater->clear_cache_after_upgrade(null, array('type' => 'plugin', 'action' => 'update', 'plugins' => array(FORMULARIOS_PW_BASENAME)));
 expect_true(get_site_transient('formularios_pw_github_release') === false, 'La caché debe limpiarse después de actualizar.');
+
+reset_test_state(test_response(test_release('0.6.7')));
+$updater->get_release();
+$updater->clear_release_cache();
+expect_true(get_site_transient('formularios_pw_github_release') === false, 'La comprobación manual de WordPress debe limpiar la caché.');
 
 echo "OK: {$test_passed} comprobaciones del actualizador\n";

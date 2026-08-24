@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Formularios CodePTY
  * Description: Formulario de contacto verificado con envío directo por email.
- * Version: 0.6.5
+ * Version: 0.6.6
  * Author: CodePTY
  * Text Domain: formularios-pw
  * Update URI: https://github.com/dr7tbien/plugin_formularios_
@@ -14,7 +14,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('FORMULARIOS_PW_VERSION', '0.6.5');
+define('FORMULARIOS_PW_VERSION', '0.6.6');
 define('FORMULARIOS_PW_FILE', __FILE__);
 define('FORMULARIOS_PW_DIR', plugin_dir_path(__FILE__));
 define('FORMULARIOS_PW_URL', plugin_dir_url(__FILE__));

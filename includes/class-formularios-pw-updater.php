@@ -27,6 +27,7 @@ final class Formularios_PW_Updater
     {
         add_filter('update_plugins_' . self::UPDATE_HOST, array($this, 'filter_update'), 10, 4);
         add_filter('plugins_api', array($this, 'filter_plugin_information'), 20, 3);
+        add_action('delete_site_transient_update_plugins', array($this, 'clear_release_cache'));
         add_action('upgrader_process_complete', array($this, 'clear_cache_after_upgrade'), 10, 2);
     }
 
@@ -121,8 +122,18 @@ final class Formularios_PW_Updater
             : array((string) ($options['plugin'] ?? ''));
 
         if (in_array(FORMULARIOS_PW_BASENAME, $plugins, true)) {
-            delete_site_transient(self::CACHE_KEY);
+            $this->clear_release_cache();
         }
+    }
+
+    /**
+     * clear_release_cache - Permite que una comprobación manual consulte nuevamente GitHub.
+     *
+     * @return void
+     */
+    public function clear_release_cache(): void
+    {
+        delete_site_transient(self::CACHE_KEY);
     }
 
     /**

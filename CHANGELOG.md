@@ -2,6 +2,11 @@
 
 Todos los cambios relevantes de Formularios CodePTY se documentan en este archivo.
 
+## 0.6.6
+
+- Publicación de prueba para validar la actualización automática desde WordPress.
+- La acción manual de comprobar actualizaciones vuelve a consultar GitHub inmediatamente.
+
 ## 0.6.5
 
 - Añadido el actualizador manual mediante releases públicas de GitHub.
