@@ -2,6 +2,12 @@
 
 Todos los cambios relevantes de Formularios CodePTY se documentan en este archivo.
 
+## 0.6.7
+
+- Añadidos botones independientes de teléfono, WhatsApp y combinado solo para smartphones.
+- Añadidas validación de números, accesibilidad y advertencias administrativas.
+- Añadidas pruebas para las ocho combinaciones posibles de configuración.
+
 ## 0.6.6
 
 - Publicación de prueba para validar la actualización automática desde WordPress.

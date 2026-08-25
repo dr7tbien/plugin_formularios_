@@ -40,6 +40,7 @@ final class Formularios_PW_Plugin
      */
     public function run(): void
     {
+        Formularios_PW_Contact_Buttons::register();
         (new Formularios_PW_Contact_Form())->register();
         (new Formularios_PW_Updater())->register();
     }

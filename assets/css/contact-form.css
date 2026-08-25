@@ -336,6 +336,115 @@
     border: 0 !important;
 }
 
+.codepty-contact__alternatives {
+    margin-top: 18px;
+    padding-top: 16px;
+    display: none;
+    border-top: 1px solid #e3e8ef;
+}
+
+.codepty-contact.is-smartphone .codepty-contact__alternatives {
+    display: block;
+}
+
+.codepty-contact__alternatives-intro {
+    margin: 0 0 10px;
+    color: #5a6678;
+    font-size: 0.95rem;
+    line-height: 1.4;
+    text-align: center;
+}
+
+.codepty-contact__alternatives-list {
+    display: grid;
+    gap: 9px;
+}
+
+.codepty-contact__alternative {
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #d8e1ec;
+    border-radius: 12px;
+    background: #f8fafc;
+    color: #263650;
+    font: inherit;
+    font-weight: 700;
+    text-decoration: none;
+    box-shadow: 0 4px 12px rgba(23, 35, 60, 0.05);
+}
+
+.codepty-contact__alternative--whatsapp,
+.codepty-contact__alternative--phone {
+    gap: 9px;
+    padding: 10px 14px;
+}
+
+.codepty-contact__alternative--combined {
+    overflow: hidden;
+}
+
+.codepty-contact__alternative:hover {
+    border-color: #b9c8d9;
+    background: #f1f5f9;
+    color: #17233c;
+}
+
+.codepty-contact__alternative:focus-within,
+.codepty-contact__alternative--whatsapp:focus-visible,
+.codepty-contact__alternative--phone:focus-visible {
+    outline: 3px solid rgba(18, 97, 166, 0.2);
+    outline-offset: 2px;
+}
+
+.codepty-contact__combined-phone,
+.codepty-contact__combined-whatsapp {
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+    color: #263650;
+    text-decoration: none;
+}
+
+.codepty-contact__combined-phone {
+    width: 54px;
+    flex: 0 0 54px;
+    justify-content: center;
+    border-right: 1px solid #d8e1ec;
+}
+
+.codepty-contact__combined-whatsapp {
+    min-width: 0;
+    padding: 10px 14px;
+    flex: 1;
+    justify-content: center;
+    gap: 9px;
+}
+
+.codepty-contact__combined-phone:hover,
+.codepty-contact__combined-phone:focus-visible,
+.codepty-contact__combined-whatsapp:hover,
+.codepty-contact__combined-whatsapp:focus-visible {
+    background: #eef3f8;
+    color: #17233c;
+    outline: 0;
+}
+
+.codepty-contact__alternative-icon {
+    width: 23px;
+    height: 23px;
+    flex: 0 0 23px;
+}
+
+.codepty-contact__alternative-icon--phone {
+    color: #1261a6;
+}
+
+.codepty-contact__alternative-icon--whatsapp {
+    color: #25d366;
+}
+
 /* Evita una tarjeta anidada cuando el shortcode ocupa la tarjeta de la portada. */
 .contact > .codepty-contact {
     max-width: none;

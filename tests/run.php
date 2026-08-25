@@ -3,7 +3,7 @@
 define('ABSPATH', __DIR__ . '/');
 define('HOUR_IN_SECONDS', 3600);
 define('MINUTE_IN_SECONDS', 60);
-define('FORMULARIOS_PW_VERSION', '0.6.6');
+define('FORMULARIOS_PW_VERSION', '0.6.7');
 define('FORMULARIOS_PW_BASENAME', 'formularios_/formularios_.php');
 
 $test_cache = array();
@@ -97,6 +97,17 @@ function esc_html($text)
     return htmlspecialchars((string) $text, ENT_QUOTES, 'UTF-8');
 }
 
+function esc_attr($text)
+{
+    return htmlspecialchars((string) $text, ENT_QUOTES, 'UTF-8');
+}
+
+function esc_url($url, $protocols = null)
+{
+    unset($protocols);
+    return htmlspecialchars((string) $url, ENT_QUOTES, 'UTF-8');
+}
+
 function test_release(string $version, array $overrides = array()): array
 {
     return array_merge(
@@ -144,18 +155,19 @@ function expect_true($condition, string $message): void
 }
 
 require dirname(__DIR__) . '/includes/class-formularios-pw-updater.php';
+require dirname(__DIR__) . '/includes/class-formularios-pw-contact-buttons.php';
 
 $updater = new Formularios_PW_Updater();
 
-reset_test_state(test_response(test_release('0.6.6')));
-expect_true($updater->filter_update(false, array('Version' => '0.6.6'), FORMULARIOS_PW_BASENAME, array()) === false, 'Una versión igual no debe actualizar.');
-
-reset_test_state(test_response(test_release('0.6.5')));
-expect_true($updater->filter_update(false, array('Version' => '0.6.6'), FORMULARIOS_PW_BASENAME, array()) === false, 'Una versión inferior no debe actualizar.');
-
 reset_test_state(test_response(test_release('0.6.7')));
-$update = $updater->filter_update(false, array('Version' => '0.6.6'), FORMULARIOS_PW_BASENAME, array());
-expect_true(is_array($update) && $update['new_version'] === '0.6.7', 'Una versión superior debe actualizar.');
+expect_true($updater->filter_update(false, array('Version' => '0.6.7'), FORMULARIOS_PW_BASENAME, array()) === false, 'Una versión igual no debe actualizar.');
+
+reset_test_state(test_response(test_release('0.6.6')));
+expect_true($updater->filter_update(false, array('Version' => '0.6.7'), FORMULARIOS_PW_BASENAME, array()) === false, 'Una versión inferior no debe actualizar.');
+
+reset_test_state(test_response(test_release('0.6.8')));
+$update = $updater->filter_update(false, array('Version' => '0.6.7'), FORMULARIOS_PW_BASENAME, array());
+expect_true(is_array($update) && $update['new_version'] === '0.6.8', 'Una versión superior debe actualizar.');
 expect_true($update['plugin'] === FORMULARIOS_PW_BASENAME, 'La actualización debe apuntar al plugin correcto.');
 
 reset_test_state(test_response(array('message' => 'Not Found'), 404));
@@ -177,16 +189,76 @@ $mismatched_tag = test_release('1.1.0');
 $mismatched_tag['assets'][0]['browser_download_url'] = 'https://github.com/dr7tbien/plugin_formularios_/releases/download/v9.9.9/formularios_.zip';
 expect_true(Formularios_PW_Updater::normalize_release($mismatched_tag) === null, 'El asset debe pertenecer a la etiqueta publicada.');
 
-reset_test_state(test_response(test_release('0.6.7')));
+reset_test_state(test_response(test_release('0.6.8')));
 expect_true($updater->get_release() !== null && $updater->get_release() !== null, 'Una release válida debe poder reutilizarse desde caché.');
 expect_true($test_requests === 1, 'La caché debe evitar consultas repetidas.');
 
 $updater->clear_cache_after_upgrade(null, array('type' => 'plugin', 'action' => 'update', 'plugins' => array(FORMULARIOS_PW_BASENAME)));
 expect_true(get_site_transient('formularios_pw_github_release') === false, 'La caché debe limpiarse después de actualizar.');
 
-reset_test_state(test_response(test_release('0.6.7')));
+reset_test_state(test_response(test_release('0.6.8')));
 $updater->get_release();
 $updater->clear_release_cache();
 expect_true(get_site_transient('formularios_pw_github_release') === false, 'La comprobación manual de WordPress debe limpiar la caché.');
 
-echo "OK: {$test_passed} comprobaciones del actualizador\n";
+$valid_numbers = array('whatsapp' => '+507 6672 6470', 'phone' => '+507 6123 4567');
+for ($combination = 0; $combination < 8; $combination++) {
+    $flags = array(
+        'whatsapp' => (bool) ($combination & 1),
+        'phone' => (bool) ($combination & 2),
+        'combined' => (bool) ($combination & 4),
+    );
+    $resolved = Formularios_PW_Contact_Buttons::resolve_configuration($flags, $valid_numbers);
+    $expected_count = (int) $flags['whatsapp'] + (int) $flags['phone'] + (int) $flags['combined'];
+    expect_true(count($resolved['buttons']) === $expected_count && !$resolved['errors'], 'La combinación ' . $combination . ' debe respetar las tres constantes independientemente.');
+}
+
+$current_configuration = Formularios_PW_Contact_Buttons::configuration();
+expect_true(!$current_configuration['buttons'], 'Las constantes no definidas deben equivaler a false.');
+
+$combined = Formularios_PW_Contact_Buttons::resolve_configuration(
+    array('whatsapp' => false, 'phone' => false, 'combined' => true),
+    $valid_numbers
+);
+expect_true(count($combined['buttons']) === 1 && $combined['buttons'][0]['type'] === 'combined', 'La configuración actual debe mostrar solo el botón combinado.');
+expect_true($combined['buttons'][0]['tel_url'] === 'tel:+50766726470', 'El combinado debe llamar al número de WhatsApp.');
+expect_true($combined['buttons'][0]['whatsapp_url'] === 'https://wa.me/50766726470', 'El combinado debe abrir wa.me con el número normalizado.');
+
+foreach (array('', 'abc', '+123', '050766726470', '+1234567890123456') as $invalid_number) {
+    expect_true(Formularios_PW_Contact_Buttons::normalize_number($invalid_number) === null, 'Debe rechazarse el número inválido: ' . $invalid_number);
+}
+
+$invalid_combined = Formularios_PW_Contact_Buttons::resolve_configuration(
+    array('whatsapp' => false, 'phone' => false, 'combined' => true),
+    array('whatsapp' => '', 'phone' => '+50761234567')
+);
+expect_true(!$invalid_combined['buttons'] && count($invalid_combined['errors']) === 1, 'El combinado inválido no debe generar enlaces y debe producir un aviso administrativo.');
+
+$all_invalid = Formularios_PW_Contact_Buttons::resolve_configuration(
+    array('whatsapp' => true, 'phone' => true, 'combined' => true),
+    array('whatsapp' => 'inválido', 'phone' => '')
+);
+expect_true(!$all_invalid['buttons'] && count($all_invalid['errors']) === 3, 'Cada botón activo debe validar de forma independiente su número requerido.');
+
+define('CODEPTY_SHOW_WHATSAPP_BUTTON_ON_SMARTPHONES', false);
+define('CODEPTY_SHOW_PHONE_BUTTON_ON_SMARTPHONES', false);
+define('CODEPTY_SHOW_PHONE_WHATSAPP_BUTTON_ON_SMARTPHONES', true);
+define('CODEPTY_CONTACT_WHATSAPP', '+507 6672 6470');
+define('CODEPTY_CONTACT_PHONE', '+507 6123 4567');
+$combined_html = Formularios_PW_Contact_Buttons::render();
+expect_true(substr_count($combined_html, '<a ') === 2, 'El combinado debe contener exactamente dos enlaces hermanos.');
+expect_true(strpos($combined_html, 'tel:+50766726470') !== false, 'La zona telefónica combinada debe usar CODEPTY_CONTACT_WHATSAPP.');
+expect_true(strpos($combined_html, 'https://wa.me/50766726470') !== false, 'La zona restante combinada debe abrir WhatsApp.');
+$first_anchor = strpos($combined_html, '<a ');
+$first_close = strpos($combined_html, '</a>', $first_anchor);
+$second_anchor = strpos($combined_html, '<a ', $first_anchor + 1);
+expect_true($first_close !== false && $second_anchor !== false && $first_close < $second_anchor, 'El combinado no debe anidar enlaces.');
+expect_true(strpos($combined_html, 'También puedes contactarnos aquí:') !== false, 'Debe explicar amablemente que existen otras formas de contacto.');
+
+$contact_css = file_get_contents(dirname(__DIR__) . '/assets/css/contact-form.css');
+$contact_js = file_get_contents(dirname(__DIR__) . '/assets/js/contact-form.js');
+expect_true(is_string($contact_css) && preg_match('/\.codepty-contact__alternatives\s*\{[^}]*display:\s*none;/s', $contact_css), 'Las alternativas deben permanecer ocultas por defecto en escritorio.');
+expect_true(is_string($contact_css) && preg_match('/\.codepty-contact\.is-smartphone \.codepty-contact__alternatives\s*\{[^}]*display:\s*block;/s', $contact_css), 'Las alternativas solo deben revelarse con la clase de smartphone.');
+expect_true(is_string($contact_js) && strpos($contact_js, "contact.classList.add('is-smartphone')") !== false, 'JavaScript debe habilitar las alternativas tras detectar un smartphone.');
+
+echo "OK: {$test_passed} comprobaciones del plugin\n";

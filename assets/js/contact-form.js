@@ -2,6 +2,7 @@
     'use strict';
 
     document.querySelectorAll('.codepty-contact__form').forEach(function (form) {
+        var contact = form.closest('.codepty-contact');
         var initialView = form.querySelector('.codepty-contact__initial');
         var verificationView = form.querySelector('.codepty-contact__verification');
         var successView = form.querySelector('.codepty-contact__success');
@@ -23,6 +24,23 @@
 
         if (originUrl) {
             originUrl.value = window.location.href;
+        }
+
+        if (contact && isSmartphone()) {
+            contact.classList.add('is-smartphone');
+        }
+
+        /**
+         * isSmartphone - Detecta teléfonos sin clasificar tabletas como smartphones.
+         *
+         * @return {boolean} Indica si pueden mostrarse las alternativas móviles.
+         */
+        function isSmartphone() {
+            if (navigator.userAgentData && navigator.userAgentData.mobile === true) {
+                return true;
+            }
+
+            return /Android.+Mobile|iPhone|iPod|Windows Phone|IEMobile|Opera Mini|webOS|BlackBerry/i.test(navigator.userAgent || '');
         }
 
         /**

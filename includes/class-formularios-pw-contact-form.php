@@ -135,7 +135,7 @@ final class Formularios_PW_Contact_Form
 
                     <button class="codepty-contact__submit codepty-contact__start" type="button">
                         <svg class="codepty-contact__start-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" d="M3 5h18v14H3zM3 6l9 7 9-7"/></svg>
-                        <span class="codepty-contact__start-label">Enviar consulta por email</span>
+                        <span class="codepty-contact__start-label">Enviar consulta</span>
                     </button>
                     <p class="codepty-contact__initial-status" role="alert" aria-live="polite"></p>
                 </div>
@@ -165,6 +165,7 @@ final class Formularios_PW_Contact_Form
                     <button class="codepty-contact__submit codepty-contact__restart" type="button">Enviar otra consulta</button>
                 </div>
             </form>
+            <?php echo Formularios_PW_Contact_Buttons::render(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
         </section>
         <?php
         return $late_styles . (string) ob_get_clean();

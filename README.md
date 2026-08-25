@@ -54,9 +54,44 @@ SMTP ni configura el servidor de correo.
 
 ### Botones de teléfono y WhatsApp
 
-El plugin actual no genera botones de teléfono o WhatsApp ni cambia el canal según el
-dispositivo: el formulario siempre utiliza email. Las constantes antiguas relacionadas con
-esos botones no son leídas por `formularios_`.
+El formulario por email funciona siempre de manera independiente. Debajo puede aparecer el
+texto **También puedes contactarnos aquí:** seguido de alternativas discretas que JavaScript
+muestra exclusivamente cuando detecta un smartphone. En escritorio, tabletas y navegadores
+sin JavaScript permanecen ocultas.
+
+La configuración se lee exclusivamente desde `wp-config.php`:
+
+```php
+define('CODEPTY_SHOW_WHATSAPP_BUTTON_ON_SMARTPHONES', false);
+define('CODEPTY_SHOW_PHONE_BUTTON_ON_SMARTPHONES', false);
+define('CODEPTY_SHOW_PHONE_WHATSAPP_BUTTON_ON_SMARTPHONES', true);
+
+define('CODEPTY_CONTACT_WHATSAPP', '+507 6672 6470');
+define('CODEPTY_CONTACT_PHONE', '+507 6672 6470');
+```
+
+Cada opción se evalúa independientemente. Una constante ausente o con valor distinto del
+booleano `true` equivale a desactivada:
+
+| WhatsApp | Teléfono | Combinado | Resultado en smartphone |
+|---|---|---|---|
+| `false` | `false` | `false` | Ningún botón |
+| `true` | `false` | `false` | WhatsApp |
+| `false` | `true` | `false` | Teléfono |
+| `true` | `true` | `false` | WhatsApp y teléfono |
+| `false` | `false` | `true` | Combinado |
+| `true` | `false` | `true` | WhatsApp y combinado |
+| `false` | `true` | `true` | Teléfono y combinado |
+| `true` | `true` | `true` | Los tres botones |
+
+El botón individual de WhatsApp usa `CODEPTY_CONTACT_WHATSAPP`; el individual de teléfono
+usa `CODEPTY_CONTACT_PHONE`. El combinado siempre usa `CODEPTY_CONTACT_WHATSAPP` para sus dos
+zonas: solo el icono azul de teléfono abre `tel:`, mientras que el icono verde de WhatsApp,
+el número y el resto abren `wa.me`. Son enlaces hermanos accesibles, nunca enlaces anidados.
+
+Los números admiten `+`, espacios, puntos, guiones y paréntesis, pero deben representar un
+número internacional de 8 a 15 dígitos que no comience por cero. Una opción activa con un
+número ausente o inválido no genera enlaces; solo los administradores reciben un aviso.
 
 ## Actualizaciones desde GitHub
 
@@ -82,20 +117,98 @@ instalarse desde **Plugins > Actualizaciones**.
 
 ## Publicación manual de una versión
 
-1. Cambiar manualmente `Version: X.Y.Z` y `FORMULARIOS_PW_VERSION` en `formularios_.php`.
-2. Actualizar `README.md`, `CHANGELOG.md` y el bloque DR Readme.
-3. Generar el paquete desde el directorio del plugin:
+Esta es la receta completa para publicar cada mejora. En el ejemplo se publica `0.6.7`;
+cambiar ese valor por la versión que corresponda.
 
-   ```bash
-   ./scripts/build-release.sh /tmp/formularios_.zip
-   ```
+### 1. Actualizar versión y documentación
 
-4. Comprobar que todas las rutas del ZIP comienzan por `formularios_/` y que existe
-   `formularios_/formularios_.php`. El script realiza esta comprobación automáticamente.
-5. Revisar el contenido y realizar manualmente el commit y push autorizados.
-6. Crear manualmente el tag `vX.Y.Z` y una release pública no marcada como prerelease.
-7. Adjuntar a la release el archivo exacto `formularios_.zip`.
-8. Desde WordPress, forzar una comprobación y verificar **Actualizar ahora**.
+Editar manualmente `formularios_.php` y escribir la misma versión en ambos lugares:
+
+```php
+ * Version: 0.6.7
+define('FORMULARIOS_PW_VERSION', '0.6.7');
+```
+
+Añadir la nueva entrada a `CHANGELOG.md`, actualizar `README.md` cuando proceda y regenerar
+el árbol documental:
+
+```bash
+cd "/home/torpedo/Local Sites/codepty/app/public/wp-content/plugins/formularios_"
+wp dr-readme update --target="$(pwd)" --block=TREE
+```
+
+### 2. Ejecutar pruebas y generar el ZIP
+
+```bash
+php tests/run.php
+find . -name '*.php' -not -path './.git/*' -print0 | xargs -0 -n1 php -l
+node --check assets/js/contact-form.js
+./scripts/build-release.sh /tmp/formularios_.zip
+unzip -t /tmp/formularios_.zip
+```
+
+El resultado debe indicar la versión nueva y `No errors detected`. El ZIP debe contener
+`formularios_/formularios_.php`; ninguna ruta puede quedar fuera de `formularios_/`.
+
+### 3. Publicar código, tag y release
+
+Definir una sola vez la versión de esta publicación:
+
+```bash
+VERSION=0.6.7
+```
+
+Revisar, confirmar y subir los cambios:
+
+```bash
+git status --short
+git add -A
+git commit -m "Preparar versión $VERSION"
+git push origin main
+```
+
+Crear y publicar el tag:
+
+```bash
+git tag --list "v$VERSION"
+git tag -a "v$VERSION" -m "Formularios CodePTY $VERSION"
+git push origin "v$VERSION"
+```
+
+El primer comando no debe devolver un tag existente. Si ya existe, detenerse y revisar la
+versión en lugar de sobrescribirlo.
+
+Crear la release pública y adjuntar el ZIP:
+
+```bash
+gh release create "v$VERSION" /tmp/formularios_.zip \
+  --repo dr7tbien/plugin_formularios_ \
+  --title "Formularios CodePTY $VERSION" \
+  --notes "Publicación de Formularios CodePTY $VERSION."
+```
+
+Comprobar la release:
+
+```bash
+gh release view "v$VERSION" --repo dr7tbien/plugin_formularios_
+```
+
+La release no debe ser draft ni prerelease y debe contener un asset llamado exactamente
+`formularios_.zip`.
+
+### 4. Actualizar WordPress
+
+En `codepty.com`, abrir **Escritorio > Actualizaciones**, pulsar **Comprobar de nuevo** y
+actualizar **Formularios CodePTY**. Después, confirmar en **Plugins instalados** que aparece
+la nueva versión.
+
+La comprobación equivalente mediante WP-CLI es:
+
+```bash
+wp plugin list --update=available
+wp plugin update formularios_
+wp plugin get formularios_ --field=version
+```
 
 El script solo crea un ZIP local. No cambia versiones, no ejecuta Git y no publica nada.
 Excluye `.git`, pruebas y scripts; además bloquea nombres de archivos privados y patrones
@@ -150,6 +263,8 @@ wp dr-readme update --target="$(pwd)" --block=TREE
 ├── assets
 │   └── js
 │       └── contact-form.js
+│           + isSmartphone()
+│           │   # Detecta teléfonos sin clasificar tabletas como smartphones.
 │           + setBusy()
 │           │   # Sincroniza el estado ocupado, el texto y la accesibilidad de un botón.
 │           + setInitialError()
@@ -174,6 +289,29 @@ wp dr-readme update --target="$(pwd)" --block=TREE
 │   + autoload_formularios_pw_files()
 │   │   # Carga manualmente las clases base del plugin.
 ├── includes
+│   ├── class-formularios-pw-contact-buttons.php
+│   │   + Formularios_PW_Contact_Buttons()
+│   │   │   # Genera alternativas de contacto exclusivas para smartphones.
+│   │   + register()
+│   │   │   # Registra avisos administrativos para configuraciones incompletas.
+│   │   + render()
+│   │   │   # Devuelve los botones solicitados con enlaces seguros y accesibles.
+│   │   + render_admin_notice()
+│   │   │   # Avisa si un botón activo carece de un número válido.
+│   │   + configuration()
+│   │   │   # Lee constantes y construye la configuración efectiva.
+│   │   + resolve_configuration()
+│   │   │   # Resuelve de forma independiente las tres opciones solicitadas.
+│   │   + normalize_number()
+│   │   │   # Convierte un teléfono internacional a formato seguro.
+│   │   + constant_is_true()
+│   │   │   # Considera activada solo una constante booleana con valor true.
+│   │   + button_data()
+│   │   │   # Construye los datos comunes de un botón ya validado.
+│   │   + phone_icon()
+│   │   │   # Devuelve el icono vectorial de teléfono.
+│   │   + whatsapp_icon()
+│   │   │   # Devuelve el icono vectorial de WhatsApp.
 │   ├── class-formularios-pw-contact-form.php
 │   │   + Formularios_PW_Contact_Form()
 │   │   │   # Coordina renderizado, verificación y envío del contacto público.
@@ -256,6 +394,8 @@ wp dr-readme update --target="$(pwd)" --block=TREE
 │       │   # Muestra información básica de la release en WordPress.
 │       + clear_cache_after_upgrade()
 │       │   # Invalida la release guardada después de actualizar el plugin.
+│       + clear_release_cache()
+│       │   # Permite que una comprobación manual consulte nuevamente GitHub.
 │       + get_release()
 │       │   # Obtiene y almacena temporalmente la última release pública válida.
 │       + normalize_release()
@@ -284,6 +424,8 @@ wp dr-readme update --target="$(pwd)" --block=TREE
 │       + wp_parse_url()
 │       + wpautop()
 │       + esc_html()
+│       + esc_attr()
+│       + esc_url()
 │       + test_release()
 │       + test_response()
 │       + reset_test_state()
