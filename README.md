@@ -35,7 +35,15 @@ host y puerto coincidan con WordPress y elimina parámetros de consulta y fragme
 valor está vacío, malformado o pertenece a otro dominio, el correo indica **No identificado**.
 
 El correo final contiene nombre, teléfono, email, mensaje, página de origen y fecha/hora.
-No genera identificadores adicionales.
+El asunto comienza con una referencia generada exclusivamente por el servidor:
+
+```text
+[CODEPTY-20260825-163045-A1B2C3D4E5F60708] Nueva consulta general en CodePTY
+```
+
+La parte central es un timestamp UTC y el sufijo criptográfico evita colisiones entre
+formularios procesados durante el mismo segundo. Ningún campo del visitante interviene en
+su construcción y el cuerpo del mensaje no cambia.
 
 ### Configuración del destinatario
 
@@ -117,7 +125,7 @@ instalarse desde **Plugins > Actualizaciones**.
 
 ## Publicación manual de una versión
 
-Esta es la receta completa para publicar cada mejora. En el ejemplo se publica `0.6.7`;
+Esta es la receta completa para publicar cada mejora. En el ejemplo se publica `0.6.8`;
 cambiar ese valor por la versión que corresponda.
 
 ### 1. Actualizar versión y documentación
@@ -125,8 +133,8 @@ cambiar ese valor por la versión que corresponda.
 Editar manualmente `formularios_.php` y escribir la misma versión en ambos lugares:
 
 ```php
- * Version: 0.6.7
-define('FORMULARIOS_PW_VERSION', '0.6.7');
+ * Version: 0.6.8
+define('FORMULARIOS_PW_VERSION', '0.6.8');
 ```
 
 Añadir la nueva entrada a `CHANGELOG.md`, actualizar `README.md` cuando proceda y regenerar
@@ -155,7 +163,7 @@ El resultado debe indicar la versión nueva y `No errors detected`. El ZIP debe 
 Definir una sola vez la versión de esta publicación:
 
 ```bash
-VERSION=0.6.7
+VERSION=0.6.8
 ```
 
 Revisar, confirmar y subir los cambios:
@@ -365,6 +373,8 @@ wp dr-readme update --target="$(pwd)" --block=TREE
 │   │   │   # Reduce una URL al esquema, host, puerto y ruta del sitio actual.
 │   │   + send_email()
 │   │   │   # Entrega la consulta al destinatario operativo configurado.
+│   │   + generate_message_identifier()
+│   │   │   # Crea una referencia temporal única para el envío.
 │   │   + configured_recipient()
 │   │   │   # Devuelve el destinatario configurado cuando es válido.
 │   │   + render_configuration_notice()
@@ -420,6 +430,10 @@ wp dr-readme update --target="$(pwd)" --block=TREE
 │       + wp_remote_retrieve_body()
 │       + sanitize_text_field()
 │       + sanitize_textarea_field()
+│       + sanitize_email()
+│       + is_email()
+│       + apply_filters()
+│       + wp_mail()
 │       + esc_url_raw()
 │       + wp_parse_url()
 │       + wpautop()

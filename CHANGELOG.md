@@ -2,6 +2,11 @@
 
 Todos los cambios relevantes de Formularios CodePTY se documentan en este archivo.
 
+## 0.6.8
+
+- Añadido al inicio del asunto un identificador único generado por el servidor.
+- El identificador combina timestamp UTC y un sufijo criptográfico para evitar colisiones.
+
 ## 0.6.7
 
 - Añadidos botones independientes de teléfono, WhatsApp y combinado solo para smartphones.

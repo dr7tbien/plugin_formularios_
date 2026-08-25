@@ -256,17 +256,19 @@ final class Formularios_PW_Contact_Form
             ? wp_unslash($_POST['origin_url'])
             : '';
         $origin = $this->resolve_origin($posted_origin);
-        $payload = array_merge(
-            $values,
-            array(
-                'origin_url' => $origin['url'],
-                'origin_title' => $origin['title'],
-                'origin_post_id' => $origin['post_id'],
-                'submitted_at' => wp_date('Y-m-d H:i:s T'),
-            )
-        );
 
         try {
+            $message_identifier = $this->generate_message_identifier();
+            $payload = array_merge(
+                $values,
+                array(
+                    'message_identifier' => $message_identifier,
+                    'origin_url' => $origin['url'],
+                    'origin_title' => $origin['title'],
+                    'origin_post_id' => $origin['post_id'],
+                    'submitted_at' => wp_date('Y-m-d H:i:s T'),
+                )
+            );
             $sent = $this->send_email($payload);
         } catch (Throwable $e) {
             $sent = false;
@@ -712,7 +714,7 @@ final class Formularios_PW_Contact_Form
             return false;
         }
 
-        $subject = 'Nueva consulta general en CodePTY';
+        $subject = '[' . $payload['message_identifier'] . '] Nueva consulta general en CodePTY';
         $origin_title = $payload['origin_title'] !== '' ? $payload['origin_title'] : 'No identificado';
         $origin_url = $payload['origin_url'] !== '' ? $payload['origin_url'] : 'No identificado';
         $body = "Nombre: {$payload['name']}\n"
@@ -724,6 +726,23 @@ final class Formularios_PW_Contact_Form
         $headers = array('Reply-To: ' . $payload['name'] . ' <' . $payload['email'] . '>');
 
         return wp_mail($recipient, $subject, $body, $headers);
+    }
+
+    /**
+     * generate_message_identifier - Crea una referencia temporal única para el envío.
+     *
+     * El timestamp UTC facilita ordenar visualmente los mensajes y el sufijo criptográfico
+     * evita colisiones entre formularios procesados durante el mismo segundo.
+     *
+     * @return string Identificador sin corchetes listo para incorporarlo al asunto.
+     * @throws Exception Si el servidor no puede generar aleatoriedad segura.
+     */
+    private function generate_message_identifier(): string
+    {
+        $timestamp = gmdate('Ymd-His');
+        $unique_suffix = strtoupper(bin2hex(random_bytes(8)));
+
+        return 'CODEPTY-' . $timestamp . '-' . $unique_suffix;
     }
 
     /**
