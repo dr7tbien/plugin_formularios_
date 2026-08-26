@@ -16,6 +16,11 @@ verificación y el envío.
 El formulario incluye verificación del email mediante una clave temporal de cuatro
 caracteres, nonce de WordPress, campo honeypot, comprobación firmada del tiempo de llenado
 y límites por IP y email. La consulta solamente puede enviarse después de validar la clave.
+El correo de validación permite leerla directamente desde el asunto:
+
+```text
+[CodePTY] 4R5Y es tu clave para enviar la consulta
+```
 
 El visitante completa primero su consulta y pulsa **Enviar consulta por email**. El formulario se
 sustituye entonces por cuatro casillas para la clave recibida. Al pulsar **Confirmar y
@@ -38,12 +43,15 @@ El correo final contiene nombre, teléfono, email, mensaje, página de origen y 
 El asunto comienza con una referencia generada exclusivamente por el servidor:
 
 ```text
-[CODEPTY-20260825-163045-A1B2C3D4E5F60708] Nueva consulta general en CodePTY
+[1787710178-A4XD] Nueva consulta general en CodePTY de Emilio Álvarez
 ```
 
-La parte central es un timestamp UTC y el sufijo criptográfico evita colisiones entre
-formularios procesados durante el mismo segundo. Ningún campo del visitante interviene en
-su construcción y el cuerpo del mensaje no cambia.
+El identificador `TIMESTAMP-XXXX` combina el timestamp Unix producido por `time()` y cuatro
+caracteres aleatorios del alfabeto `ABCDEFGHJKMNPQRSTUVWXYZ23456789`. El sufijo se genera
+con `random_int()` para reducir el riesgo de colisiones entre formularios procesados durante
+el mismo segundo. Ningún campo del visitante interviene en el identificador. El nombre se
+sanea por separado, conserva tildes y apóstrofos seguros, elimina controles y saltos de línea
+y se limita a 80 caracteres antes de incorporarlo al asunto. El cuerpo no cambia.
 
 ### Configuración del destinatario
 
@@ -125,7 +133,7 @@ instalarse desde **Plugins > Actualizaciones**.
 
 ## Publicación manual de una versión
 
-Esta es la receta completa para publicar cada mejora. En el ejemplo se publica `0.6.8`;
+Esta es la receta completa para publicar cada mejora. En el ejemplo se publica `0.6.9`;
 cambiar ese valor por la versión que corresponda.
 
 ### 1. Actualizar versión y documentación
@@ -133,8 +141,8 @@ cambiar ese valor por la versión que corresponda.
 Editar manualmente `formularios_.php` y escribir la misma versión en ambos lugares:
 
 ```php
- * Version: 0.6.8
-define('FORMULARIOS_PW_VERSION', '0.6.8');
+ * Version: 0.6.9
+define('FORMULARIOS_PW_VERSION', '0.6.9');
 ```
 
 Añadir la nueva entrada a `CHANGELOG.md`, actualizar `README.md` cuando proceda y regenerar
@@ -163,7 +171,7 @@ El resultado debe indicar la versión nueva y `No errors detected`. El ZIP debe 
 Definir una sola vez la versión de esta publicación:
 
 ```bash
-VERSION=0.6.8
+VERSION=0.6.9
 ```
 
 Revisar, confirmar y subir los cambios:
@@ -374,7 +382,9 @@ wp dr-readme update --target="$(pwd)" --block=TREE
 │   │   + send_email()
 │   │   │   # Entrega la consulta al destinatario operativo configurado.
 │   │   + generate_message_identifier()
-│   │   │   # Crea una referencia temporal única para el envío.
+│   │   │   # Crea una referencia temporal aleatoria para el envío.
+│   │   + sanitize_subject_name()
+│   │   │   # Prepara un nombre Unicode seguro para una cabecera de correo.
 │   │   + configured_recipient()
 │   │   │   # Devuelve el destinatario configurado cuando es válido.
 │   │   + render_configuration_notice()

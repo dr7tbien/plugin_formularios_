@@ -4,7 +4,7 @@ define('ABSPATH', __DIR__ . '/');
 define('HOUR_IN_SECONDS', 3600);
 define('MINUTE_IN_SECONDS', 60);
 define('DAY_IN_SECONDS', 86400);
-define('FORMULARIOS_PW_VERSION', '0.6.8');
+define('FORMULARIOS_PW_VERSION', '0.6.9');
 define('FORMULARIOS_PW_BASENAME', 'formularios_/formularios_.php');
 
 $test_cache = array();
@@ -184,15 +184,15 @@ require dirname(__DIR__) . '/includes/class-formularios-pw-contact-buttons.php';
 
 $updater = new Formularios_PW_Updater();
 
-reset_test_state(test_response(test_release('0.6.8')));
-expect_true($updater->filter_update(false, array('Version' => '0.6.8'), FORMULARIOS_PW_BASENAME, array()) === false, 'Una versión igual no debe actualizar.');
-
-reset_test_state(test_response(test_release('0.6.7')));
-expect_true($updater->filter_update(false, array('Version' => '0.6.8'), FORMULARIOS_PW_BASENAME, array()) === false, 'Una versión inferior no debe actualizar.');
-
 reset_test_state(test_response(test_release('0.6.9')));
-$update = $updater->filter_update(false, array('Version' => '0.6.8'), FORMULARIOS_PW_BASENAME, array());
-expect_true(is_array($update) && $update['new_version'] === '0.6.9', 'Una versión superior debe actualizar.');
+expect_true($updater->filter_update(false, array('Version' => '0.6.9'), FORMULARIOS_PW_BASENAME, array()) === false, 'Una versión igual no debe actualizar.');
+
+reset_test_state(test_response(test_release('0.6.8')));
+expect_true($updater->filter_update(false, array('Version' => '0.6.9'), FORMULARIOS_PW_BASENAME, array()) === false, 'Una versión inferior no debe actualizar.');
+
+reset_test_state(test_response(test_release('0.7.0')));
+$update = $updater->filter_update(false, array('Version' => '0.6.9'), FORMULARIOS_PW_BASENAME, array());
+expect_true(is_array($update) && $update['new_version'] === '0.7.0', 'Una versión superior debe actualizar.');
 expect_true($update['plugin'] === FORMULARIOS_PW_BASENAME, 'La actualización debe apuntar al plugin correcto.');
 
 reset_test_state(test_response(array('message' => 'Not Found'), 404));
@@ -291,13 +291,25 @@ require dirname(__DIR__) . '/includes/class-formularios-pw-contact-form.php';
 $contact_form = new Formularios_PW_Contact_Form();
 $identifier_method = new ReflectionMethod(Formularios_PW_Contact_Form::class, 'generate_message_identifier');
 $identifier_method->setAccessible(true);
-$identifiers = array();
-for ($index = 0; $index < 1000; $index++) {
+$identifier_pattern = '/^([0-9]+)-([ABCDEFGHJKMNPQRSTUVWXYZ23456789]{4})$/';
+for ($index = 0; $index < 200; $index++) {
+    $before = time();
     $identifier = $identifier_method->invoke($contact_form);
-    expect_true((bool) preg_match('/^CODEPTY-[0-9]{8}-[0-9]{6}-[A-F0-9]{16}$/', $identifier), 'El identificador debe conservar timestamp y sufijo seguro.');
-    $identifiers[$identifier] = true;
+    $after = time();
+    $matches = array();
+    expect_true((bool) preg_match($identifier_pattern, $identifier, $matches), 'El identificador debe contener timestamp Unix y cuatro caracteres del alfabeto permitido.');
+    expect_true(isset($matches[1]) && (int) $matches[1] >= $before && (int) $matches[1] <= $after, 'El timestamp del identificador debe proceder de time().');
 }
-expect_true(count($identifiers) === 1000, 'Mil identificadores generados en el mismo proceso deben ser únicos.');
+
+$name_method = new ReflectionMethod(Formularios_PW_Contact_Form::class, 'sanitize_subject_name');
+$name_method->setAccessible(true);
+expect_true($name_method->invoke($contact_form, 'Emilio Álvarez') === 'Emilio Álvarez', 'El nombre del asunto debe conservar espacios y tildes seguros.');
+expect_true($name_method->invoke($contact_form, "María O'Connor") === "María O'Connor", 'El nombre del asunto debe conservar apóstrofos seguros.');
+$injected_name = $name_method->invoke($contact_form, "Emilio\r\nBcc: victima@example.com\x00");
+expect_true(strpbrk($injected_name, "\r\n\x00") === false, 'El nombre del asunto debe eliminar saltos de línea y controles.');
+$long_name = $name_method->invoke($contact_form, str_repeat('Á', 100));
+$long_name_length = function_exists('mb_strlen') ? mb_strlen($long_name, 'UTF-8') : preg_match_all('/./us', $long_name);
+expect_true($long_name_length === 80, 'El nombre del asunto debe limitarse a 80 caracteres Unicode.');
 
 $message_identifier = $identifier_method->invoke($contact_form);
 $send_method = new ReflectionMethod(Formularios_PW_Contact_Form::class, 'send_email');
@@ -306,7 +318,8 @@ $sent = $send_method->invoke(
     $contact_form,
     array(
         'message_identifier' => $message_identifier,
-        'name' => 'Cliente',
+        'name' => 'Emilio Álvarez',
+        'subject_name' => 'Emilio Álvarez',
         'phone' => '+50760000000',
         'email' => 'cliente@example.com',
         'message' => 'Consulta de prueba',
@@ -316,7 +329,14 @@ $sent = $send_method->invoke(
     )
 );
 expect_true($sent === true, 'El correo final debe conservar su funcionamiento.');
-expect_true($test_mail['subject'] === '[' . $message_identifier . '] Nueva consulta general en CodePTY', 'El asunto debe comenzar con el mismo identificador generado y conservar el asunto anterior.');
+expect_true($test_mail['subject'] === '[' . $message_identifier . '] Nueva consulta general en CodePTY de Emilio Álvarez', 'El asunto final debe contener el identificador y el nombre saneado.');
 expect_true(strpos($test_mail['body'], 'Consulta de prueba') !== false && strpos($test_mail['body'], $message_identifier) === false, 'El cuerpo debe permanecer sin cambios y no duplicar el identificador.');
+
+$verification_method = new ReflectionMethod(Formularios_PW_Contact_Form::class, 'send_verification_email');
+$verification_method->setAccessible(true);
+$verification_sent = $verification_method->invoke($contact_form, 'cliente@example.com', '4R5Y');
+expect_true($verification_sent === true, 'El correo de validación debe conservar su funcionamiento.');
+expect_true($test_mail['subject'] === '[CodePTY] 4R5Y es tu clave para enviar la consulta', 'La clave debe aparecer inmediatamente después de [CodePTY] en el asunto.');
+expect_true(strpos($test_mail['body'], 'Tu clave de verificación es: 4R5Y') !== false, 'El cuerpo del correo de validación debe conservar la misma clave.');
 
 echo "OK: {$test_passed} comprobaciones del plugin\n";

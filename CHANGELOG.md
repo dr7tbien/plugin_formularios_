@@ -2,6 +2,14 @@
 
 Todos los cambios relevantes de Formularios CodePTY se documentan en este archivo.
 
+## 0.6.9
+
+- Cambiado el identificador del asunto al formato `TIMESTAMP-XXXX`, con timestamp Unix y
+  cuatro caracteres generados mediante `random_int()`.
+- Añadido al asunto final el nombre saneado del remitente, sin controles ni saltos de línea
+  y limitado a 80 caracteres.
+- Añadida la clave de cuatro caracteres al asunto del correo de validación.
+
 ## 0.6.8
 
 - Añadido al inicio del asunto un identificador único generado por el servidor.

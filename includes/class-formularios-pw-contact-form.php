@@ -22,6 +22,7 @@ final class Formularios_PW_Contact_Form
     private const VERIFICATION_LIFETIME = 15 * MINUTE_IN_SECONDS;
     private const MAX_CODE_ATTEMPTS = 5;
     private const CODE_ALPHABET = '234679ACDEFGHJKMNPQRTUVWXYZ';
+    private const IDENTIFIER_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
     private const MIN_FILL_SECONDS = 3;
     private const MAX_FORM_AGE_SECONDS = 2 * DAY_IN_SECONDS;
     private static $instance = 0;
@@ -263,6 +264,7 @@ final class Formularios_PW_Contact_Form
                 $values,
                 array(
                     'message_identifier' => $message_identifier,
+                    'subject_name' => $this->sanitize_subject_name($values['name']),
                     'origin_url' => $origin['url'],
                     'origin_title' => $origin['title'],
                     'origin_post_id' => $origin['post_id'],
@@ -535,7 +537,12 @@ final class Formularios_PW_Contact_Form
      */
     private function send_verification_email(string $email, string $code): bool
     {
-        $subject = 'Tu clave para enviar la consulta a CodePTY';
+        $safe_code = preg_replace('/[^A-Z0-9]/', '', strtoupper($code));
+        if (!is_string($safe_code) || !preg_match('/^[A-Z0-9]{4}$/', $safe_code)) {
+            return false;
+        }
+
+        $subject = '[CodePTY] ' . $safe_code . ' es tu clave para enviar la consulta';
         $body = "Tu clave de verificación es: {$code}\n\nCaduca en 10 minutos y solo puede utilizarse una vez.\nSi no solicitaste esta clave, puedes ignorar este mensaje.";
 
         return wp_mail($email, $subject, $body);
@@ -714,7 +721,7 @@ final class Formularios_PW_Contact_Form
             return false;
         }
 
-        $subject = '[' . $payload['message_identifier'] . '] Nueva consulta general en CodePTY';
+        $subject = '[' . $payload['message_identifier'] . '] Nueva consulta general en CodePTY de ' . $payload['subject_name'];
         $origin_title = $payload['origin_title'] !== '' ? $payload['origin_title'] : 'No identificado';
         $origin_url = $payload['origin_url'] !== '' ? $payload['origin_url'] : 'No identificado';
         $body = "Nombre: {$payload['name']}\n"
@@ -729,20 +736,49 @@ final class Formularios_PW_Contact_Form
     }
 
     /**
-     * generate_message_identifier - Crea una referencia temporal única para el envío.
+     * generate_message_identifier - Crea una referencia temporal aleatoria para el envío.
      *
-     * El timestamp UTC facilita ordenar visualmente los mensajes y el sufijo criptográfico
-     * evita colisiones entre formularios procesados durante el mismo segundo.
+     * El timestamp Unix facilita ordenar los mensajes y cuatro caracteres generados con
+     * `random_int()` reducen el riesgo de colisión dentro del mismo segundo.
      *
      * @return string Identificador sin corchetes listo para incorporarlo al asunto.
      * @throws Exception Si el servidor no puede generar aleatoriedad segura.
      */
     private function generate_message_identifier(): string
     {
-        $timestamp = gmdate('Ymd-His');
-        $unique_suffix = strtoupper(bin2hex(random_bytes(8)));
+        $suffix = '';
+        $max = strlen(self::IDENTIFIER_ALPHABET) - 1;
+        for ($index = 0; $index < 4; $index++) {
+            $suffix .= self::IDENTIFIER_ALPHABET[random_int(0, $max)];
+        }
 
-        return 'CODEPTY-' . $timestamp . '-' . $unique_suffix;
+        return time() . '-' . $suffix;
+    }
+
+    /**
+     * sanitize_subject_name - Prepara un nombre Unicode seguro para una cabecera de correo.
+     *
+     * @param string $name Nombre ya recibido y sanitizado desde el formulario.
+     * @return string Nombre sin controles, en una sola línea y limitado a 80 caracteres.
+     */
+    private function sanitize_subject_name(string $name): string
+    {
+        $name = preg_replace('/[\x00-\x1F\x7F]/u', ' ', $name);
+        if (!is_string($name)) {
+            return 'Cliente';
+        }
+
+        $name = sanitize_text_field($name);
+        $name = preg_replace('/\s+/u', ' ', $name);
+        $name = is_string($name) ? trim($name) : '';
+
+        if (function_exists('mb_substr')) {
+            $name = mb_substr($name, 0, 80, 'UTF-8');
+        } elseif (preg_match_all('/./us', $name, $characters)) {
+            $name = implode('', array_slice($characters[0], 0, 80));
+        }
+
+        return '' !== $name ? $name : 'Cliente';
     }
 
     /**
