@@ -1,7 +1,11 @@
 (function () {
     'use strict';
 
-    document.querySelectorAll('.codepty-contact__form').forEach(function (form) {
+    var initialized = new WeakSet();
+    function initializeForms(root) {
+    root.querySelectorAll('.codepty-contact__form').forEach(function (form) {
+        if (initialized.has(form)) return;
+        initialized.add(form);
         var contact = form.closest('.codepty-contact');
         var initialView = form.querySelector('.codepty-contact__initial');
         var verificationView = form.querySelector('.codepty-contact__verification');
@@ -23,7 +27,8 @@
         var authorizedAction = '';
 
         if (originUrl) {
-            originUrl.value = window.location.href;
+            var panel = form.closest('.panels-pty-panel');
+            originUrl.value = panel ? panel.dataset.url : (document.querySelector('.panels-pty-root.has-panels') && window.PANELS_PTY_CONFIG ? window.PANELS_PTY_CONFIG.homeUrl : window.location.href);
         }
 
         if (contact && isSmartphone()) {
@@ -374,4 +379,7 @@
         });
 
     });
+    }
+    document.addEventListener('panelspty:loaded', function () { initializeForms(document); });
+    initializeForms(document);
 }());

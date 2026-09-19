@@ -2,6 +2,12 @@
 
 Todos los cambios relevantes de Formularios CodePTY se documentan en este archivo.
 
+## 0.6.10
+
+- Inicializados los formularios cargados por Panels PTY sin duplicar eventos.
+- Conservada la URL de origen de cada formulario, incluido Home al entrar directamente en un panel.
+- Invalidada la caché del script al cambiar su archivo mediante filemtime.
+
 ## 0.6.9
 
 - Cambiado el identificador del asunto al formato `TIMESTAMP-XXXX`, con timestamp Unix y

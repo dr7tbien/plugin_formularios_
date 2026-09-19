@@ -59,7 +59,7 @@ final class Formularios_PW_Contact_Form
     public function register_assets(): void
     {
         wp_register_style('formularios-pw-contact', FORMULARIOS_PW_URL . 'assets/css/contact-form.css', array(), FORMULARIOS_PW_VERSION);
-        wp_register_script('formularios-pw-contact', FORMULARIOS_PW_URL . 'assets/js/contact-form.js', array(), FORMULARIOS_PW_VERSION, true);
+        wp_register_script('formularios-pw-contact', FORMULARIOS_PW_URL . 'assets/js/contact-form.js', array(), (string) filemtime(FORMULARIOS_PW_DIR . 'assets/js/contact-form.js'), true);
         wp_localize_script(
             'formularios-pw-contact',
             'formulariosPWContact',

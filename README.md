@@ -279,6 +279,7 @@ wp dr-readme update --target="$(pwd)" --block=TREE
 ├── assets
 │   └── js
 │       └── contact-form.js
+│           + initializeForms()
 │           + isSmartphone()
 │           │   # Detecta teléfonos sin clasificar tabletas como smartphones.
 │           + setBusy()
@@ -458,3 +459,11 @@ wp dr-readme update --target="$(pwd)" --block=TREE
     + formularios_pw_uninstall_cleanup()
     │   # Elimina cron de retención para evitar ejecuciones huérfanas.
 <!-- TREE:END -->
+
+
+## Formularios dentro de paneles (0.6.10)
+
+El script escucha `panelspty:loaded` e inicializa únicamente formularios nuevos,
+conservando los eventos de los ya activos. El theme debe cargar los recursos
+del formulario en la página base antes de abrir paneles. La URL de origen
+se toma del panel correspondiente o de Home durante su restauración.
